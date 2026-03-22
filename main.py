@@ -18,16 +18,19 @@ from gtfs_loader import (
     load_connections,
     load_stops,
     load_stops_by_name,
+    load_stop_coords,
     load_trip_to_route,
     time_to_seconds,
 )
 from dijkstra import PathResult, dijkstra, print_result
+from visualize import visualize
 
 
 def main() -> None:
     print("Wczytywanie danych...")
     stops: dict[StopId, StopName] = load_stops()
     stops_by_name: dict[StopName, list[StopId]] = load_stops_by_name()
+    coords = load_stop_coords()
     route_names: dict[str, str] = load_trip_to_route()
     active_services = load_active_service_ids(date.today())
     active_trips = load_active_trip_ids(active_services)
@@ -57,6 +60,7 @@ def main() -> None:
 
     if result:
         print_result(result, stops, route_names, computation_time)
+        visualize(result, stops, coords, route_names)
     else:
         print("Brak połączenia.")
 

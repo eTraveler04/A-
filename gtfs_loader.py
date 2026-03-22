@@ -143,6 +143,17 @@ def load_connections(active_trip_ids: set[TripId]) -> list[Connection]:
     return connections
 
 
+def load_stop_coords() -> dict[StopId, tuple[float, float]]:
+    """Zwraca mapę stop_id -> (lat, lon)."""
+    coords: dict[StopId, tuple[float, float]] = {}
+    with open(GTFS_DIR / "stops.txt", encoding="utf-8") as f:
+        reader: csv.DictReader[str] = csv.DictReader(f)
+        for row in reader:
+            if row["location_type"] == "0":
+                coords[row["stop_id"]] = (float(row["stop_lat"]), float(row["stop_lon"]))
+    return coords
+
+
 def load_trip_to_route() -> dict[TripId, str]:
     """Zwraca mapę trip_id -> route_short_name."""
     route_names: dict[str, str] = {}
