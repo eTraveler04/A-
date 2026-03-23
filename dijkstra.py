@@ -64,7 +64,7 @@ def dijkstra(
         current_time, current_stop = heapq.heappop(queue)
 
         # pominięcie zdezaktualizowanych wpisów w kolejce
-        if current_time > best_arrival.get(current_stop, current_time + 1):
+        if current_time > best_arrival.get(current_stop, float("inf")): # Fallback dla przystankow, ktorych jeszcze nie ma w best_arrival 
             continue
 
         # cel osiągnięty
@@ -76,7 +76,7 @@ def dijkstra(
             if conn.departure_time < current_time:
                 continue
 
-            if conn.arrival_time < best_arrival.get(conn.to_stop_id, float("inf")):
+            if conn.arrival_time < best_arrival.get(conn.to_stop_id, float("inf")): # Fallback dla przystankow, ktorych jeszcze nie ma w best_arrival 
                 best_arrival[conn.to_stop_id] = conn.arrival_time
                 prev[conn.to_stop_id] = conn
                 heapq.heappush(queue, (conn.arrival_time, conn.to_stop_id))

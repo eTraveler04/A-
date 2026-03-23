@@ -3,7 +3,9 @@ Wyszukiwarka połączeń Kolei Dolnośląskich.
 
 Użycie:
     python3 main.py
+    python3 main.py "Wrocław Główny" "Legnica" "08:30"
 """
+import sys
 import time
 from datetime import date
 
@@ -38,9 +40,13 @@ def main() -> None:
     graph: Graph = build_graph(connections)
     print("Gotowe.\n")
 
-    from_name: str = input("Skąd: ").strip()
-    to_name: str = input("Dokąd: ").strip()
-    time_str: str = input("Najwcześniejszy odjazd (HH:MM): ").strip()
+    args = sys.argv[1:]
+    if len(args) >= 3:
+        from_name, to_name, time_str = args[0], args[1], args[2]
+    else:
+        from_name = input("Skąd: ").strip()
+        to_name = input("Dokąd: ").strip()
+        time_str = input("Najwcześniejszy odjazd (HH:MM): ").strip()
 
     source_ids: set[StopId] = set(stops_by_name.get(from_name, []))
     target_ids: set[StopId] = set(stops_by_name.get(to_name, []))
