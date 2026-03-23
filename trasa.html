@@ -17,7 +17,7 @@
             <meta name="viewport" content="width=device-width,
                 initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
             <style>
-                #map_e56aa11571aaaab132c7c0fd8c2cb791 {
+                #map_557629e4df375234a207ab751e953c75 {
                     position: relative;
                     width: 100.0%;
                     height: 100.0%;
@@ -54,16 +54,16 @@
 <body>
     
     
-            <div class="folium-map" id="map_e56aa11571aaaab132c7c0fd8c2cb791" ></div>
+            <div class="folium-map" id="map_557629e4df375234a207ab751e953c75" ></div>
         
 </body>
 <script>
     
     
-            var map_e56aa11571aaaab132c7c0fd8c2cb791 = L.map(
-                "map_e56aa11571aaaab132c7c0fd8c2cb791",
+            var map_557629e4df375234a207ab751e953c75 = L.map(
+                "map_557629e4df375234a207ab751e953c75",
                 {
-                    center: [51.09482506122449, 15.829813081632652],
+                    center: [50.56568355555555, 16.839158851851852],
                     crs: L.CRS.EPSG3857,
                     ...{
   "zoom": 10,
@@ -78,7 +78,7 @@
 
         
     
-            var tile_layer_39147fe0d488a579e9754ccb073d0c7c = L.tileLayer(
+            var tile_layer_f38606ce3926b538bf3e38da249e6d18 = L.tileLayer(
                 "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 {
   "minZoom": 0,
@@ -95,18 +95,18 @@
             );
         
     
-            tile_layer_39147fe0d488a579e9754ccb073d0c7c.addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
+            tile_layer_f38606ce3926b538bf3e38da249e6d18.addTo(map_557629e4df375234a207ab751e953c75);
         
     
-            var poly_line_43c25491eb3317eea45f9a5350721a06 = L.polyline(
-                [[51.097917, 17.037957], [51.111064, 16.974872]],
+            var poly_line_39ce996e420be037db9839c23d908e4a = L.polyline(
+                [[50.097276, 16.658984], [50.144089, 16.654959], [50.187657, 16.66571], [50.213153, 16.655238], [50.23843, 16.637997], [50.285645, 16.647031], [50.296883, 16.654959], [50.354398, 16.640915], [50.392204, 16.636833], [50.435785, 16.658613], [50.451326, 16.656778], [50.477565, 16.670747], [50.504857, 16.733784], [50.509532, 16.758018], [50.536182, 16.899563], [50.563354, 16.94673], [50.608498, 17.033889], [50.663241, 17.030029], [50.728378, 17.030043], [50.784225, 17.060255], [50.829399, 17.046304], [50.878928, 17.024576], [50.925738, 17.032829], [50.9835, 17.049596], [51.030628, 17.066139], [51.054668, 17.068813], [51.097917, 17.037957]],
                 {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "red", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 5}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
+            ).addTo(map_557629e4df375234a207ab751e953c75);
         
     
-            poly_line_43c25491eb3317eea45f9a5350721a06.bindTooltip(
+            poly_line_39ce996e420be037db9839c23d908e4a.bindTooltip(
                 `<div>
-                     Linia D2
+                     Linia D9/D3
                  </div>`,
                 {
   "sticky": true,
@@ -114,15 +114,32 @@
             );
         
     
-            var poly_line_2a5411a6f7f1bbe6472a0f83b451e811 = L.polyline(
-                [[51.111064, 16.974872], [51.119688, 16.955185], [51.126159, 16.916367], [51.141916, 16.867326], [51.183662, 16.793938], [51.188258, 16.739599], [51.190497, 16.664605], [51.189431, 16.606723], [51.215759, 16.486136], [51.215151, 16.350384], [51.215107, 16.31412], [51.215013, 16.254462], [51.214097, 16.16967], [51.255565, 16.054625], [51.277673, 15.937479], [51.261816, 15.847333], [51.270932, 15.778626], [51.286079, 15.679995], [51.266092, 15.569574], [51.254653, 15.389217], [51.270119, 15.299446], [51.290105, 15.222968]],
-                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "blue", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 5}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
+            var circle_marker_c96a0905cffba64cf90535d56f892031 = L.circleMarker(
+                [50.097276, 16.658984],
+                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "white", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
+            ).addTo(map_557629e4df375234a207ab751e953c75);
         
     
-            poly_line_2a5411a6f7f1bbe6472a0f83b451e811.bindTooltip(
+        var popup_210423c2518df59db9c4d0953960c0f2 = L.popup({
+  "maxWidth": 200,
+});
+
+        
+            
+                var html_5c2bdc5273df3d9bac766d916f8df6e8 = $(`<div id="html_5c2bdc5273df3d9bac766d916f8df6e8" style="width: 100.0%; height: 100.0%;"><b>Lichkov</b><br>odjazd: 15:30:00</div>`)[0];
+                popup_210423c2518df59db9c4d0953960c0f2.setContent(html_5c2bdc5273df3d9bac766d916f8df6e8);
+            
+        
+
+        circle_marker_c96a0905cffba64cf90535d56f892031.bindPopup(popup_210423c2518df59db9c4d0953960c0f2)
+        ;
+
+        
+    
+    
+            circle_marker_c96a0905cffba64cf90535d56f892031.bindTooltip(
                 `<div>
-                     Linia D1
+                     Lichkov
                  </div>`,
                 {
   "sticky": true,
@@ -130,178 +147,14 @@
             );
         
     
-            var poly_line_88d824b4bb3db7fde3da6f14ad27709a = L.polyline(
-                [[51.290105, 15.222968], [51.245225, 15.046882], [51.174129, 15.017733], [51.154803, 15.020129], [51.140016, 15.00409]],
-                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "green", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 5}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
-        
-    
-            poly_line_88d824b4bb3db7fde3da6f14ad27709a.bindTooltip(
-                `<div>
-                     Linia D10
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var poly_line_60f9ede7a6beea4ed132c3321d866ccc = L.polyline(
-                [[51.140016, 15.00409], [51.127743, 15.060941], [51.10964, 15.085837], [51.090889, 15.155701], [51.098102, 15.219586], [51.11136, 15.29354], [51.069725, 15.380647], [51.056314, 15.419985], [51.03395, 15.428814], [50.989545, 15.450399], [50.948228, 15.456076], [50.924196, 15.503632], [50.91402, 15.565918], [50.910496, 15.645859], [50.9099, 15.743105], [50.90259, 15.75599], [50.88622, 15.795055], [50.877454, 15.801779], [50.861789, 15.798061], [50.835393, 15.788129], [50.825253, 15.78659], [50.810135, 15.764121], [50.78256, 15.761635]],
-                {"bubblingMouseEvents": true, "color": "purple", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "purple", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.85, "smoothFactor": 1.0, "stroke": true, "weight": 5}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
-        
-    
-            poly_line_60f9ede7a6beea4ed132c3321d866ccc.bindTooltip(
-                `<div>
-                     Linia D62
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_751f912c131a20c0474297561a9e39bb = L.circleMarker(
+            var marker_4d3c38cbeb40b480fa511c7eda1a3034 = L.marker(
                 [51.097917, 17.037957],
-                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "white", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
-        
-    
-        var popup_f9fefc32068f6e9f4121d280f7979384 = L.popup({
-  "maxWidth": 200,
-});
-
-        
-            
-                var html_8f57dbebe419cb5a1577d9e57c8c4d55 = $(`<div id="html_8f57dbebe419cb5a1577d9e57c8c4d55" style="width: 100.0%; height: 100.0%;"><b>Wrocław Główny</b><br>odjazd: 15:31:00</div>`)[0];
-                popup_f9fefc32068f6e9f4121d280f7979384.setContent(html_8f57dbebe419cb5a1577d9e57c8c4d55);
-            
-        
-
-        circle_marker_751f912c131a20c0474297561a9e39bb.bindPopup(popup_f9fefc32068f6e9f4121d280f7979384)
-        ;
-
-        
-    
-    
-            circle_marker_751f912c131a20c0474297561a9e39bb.bindTooltip(
-                `<div>
-                     Wrocław Główny
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_86b3b47d7f5ae6c99b66520cc14e8035 = L.circleMarker(
-                [51.111064, 16.974872],
-                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "white", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
-        
-    
-        var popup_a7ed1df3407176a29a04ff4ebd1ca6fb = L.popup({
-  "maxWidth": 200,
-});
-
-        
-            
-                var html_58e5f1347f103308b87bf6c9803f2c3b = $(`<div id="html_58e5f1347f103308b87bf6c9803f2c3b" style="width: 100.0%; height: 100.0%;"><b>Wrocław Muchobór</b><br>odjazd: 15:50:00</div>`)[0];
-                popup_a7ed1df3407176a29a04ff4ebd1ca6fb.setContent(html_58e5f1347f103308b87bf6c9803f2c3b);
-            
-        
-
-        circle_marker_86b3b47d7f5ae6c99b66520cc14e8035.bindPopup(popup_a7ed1df3407176a29a04ff4ebd1ca6fb)
-        ;
-
-        
-    
-    
-            circle_marker_86b3b47d7f5ae6c99b66520cc14e8035.bindTooltip(
-                `<div>
-                     Wrocław Muchobór
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_4abed33d1fb9d3fc4cece7395409981e = L.circleMarker(
-                [51.290105, 15.222968],
-                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "white", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
-        
-    
-        var popup_7631ac29142934ed9f75347caa3fd201 = L.popup({
-  "maxWidth": 200,
-});
-
-        
-            
-                var html_1a38a404542b4015cc9427548c1e21d2 = $(`<div id="html_1a38a404542b4015cc9427548c1e21d2" style="width: 100.0%; height: 100.0%;"><b>Węgliniec</b><br>odjazd: 18:38:00</div>`)[0];
-                popup_7631ac29142934ed9f75347caa3fd201.setContent(html_1a38a404542b4015cc9427548c1e21d2);
-            
-        
-
-        circle_marker_4abed33d1fb9d3fc4cece7395409981e.bindPopup(popup_7631ac29142934ed9f75347caa3fd201)
-        ;
-
-        
-    
-    
-            circle_marker_4abed33d1fb9d3fc4cece7395409981e.bindTooltip(
-                `<div>
-                     Węgliniec
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var circle_marker_2c20b6ed5a7c302005f48336d86ab523 = L.circleMarker(
-                [51.140016, 15.00409],
-                {"bubblingMouseEvents": true, "color": "black", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "white", "fillOpacity": 1.0, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 7, "stroke": true, "weight": 3}
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
-        
-    
-        var popup_4b5821d4efb41ded994f867914c63c88 = L.popup({
-  "maxWidth": 200,
-});
-
-        
-            
-                var html_73693e7b577b04ea88e1276037b5ccec = $(`<div id="html_73693e7b577b04ea88e1276037b5ccec" style="width: 100.0%; height: 100.0%;"><b>Zgorzelec</b><br>odjazd: 19:44:00</div>`)[0];
-                popup_4b5821d4efb41ded994f867914c63c88.setContent(html_73693e7b577b04ea88e1276037b5ccec);
-            
-        
-
-        circle_marker_2c20b6ed5a7c302005f48336d86ab523.bindPopup(popup_4b5821d4efb41ded994f867914c63c88)
-        ;
-
-        
-    
-    
-            circle_marker_2c20b6ed5a7c302005f48336d86ab523.bindTooltip(
-                `<div>
-                     Zgorzelec
-                 </div>`,
-                {
-  "sticky": true,
-}
-            );
-        
-    
-            var marker_c1dc96cdeaccbf625b3100f497ff1e93 = L.marker(
-                [50.78256, 15.761635],
                 {
 }
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
+            ).addTo(map_557629e4df375234a207ab751e953c75);
         
     
-            var icon_fef9023bb044b7b92a5367a57238c45b = L.AwesomeMarkers.icon(
+            var icon_10e2460e7856a1389e8dc3a9f20e271e = L.AwesomeMarkers.icon(
                 {
   "markerColor": "green",
   "iconColor": "white",
@@ -312,26 +165,26 @@
             );
         
     
-        var popup_9d757bfd491082fc03317bea507c4789 = L.popup({
+        var popup_1cae12699850b536e6624d97359d3f1f = L.popup({
   "maxWidth": 200,
 });
 
         
             
-                var html_2af41270f22362d49a0c86b4ca955bae = $(`<div id="html_2af41270f22362d49a0c86b4ca955bae" style="width: 100.0%; height: 100.0%;"><b>Karpacz</b><br>przyjazd: 22:10:00</div>`)[0];
-                popup_9d757bfd491082fc03317bea507c4789.setContent(html_2af41270f22362d49a0c86b4ca955bae);
+                var html_146ae5f095ba1fd1e436e330b24aec1b = $(`<div id="html_146ae5f095ba1fd1e436e330b24aec1b" style="width: 100.0%; height: 100.0%;"><b>Wrocław Główny</b><br>przyjazd: 17:34:00</div>`)[0];
+                popup_1cae12699850b536e6624d97359d3f1f.setContent(html_146ae5f095ba1fd1e436e330b24aec1b);
             
         
 
-        marker_c1dc96cdeaccbf625b3100f497ff1e93.bindPopup(popup_9d757bfd491082fc03317bea507c4789)
+        marker_4d3c38cbeb40b480fa511c7eda1a3034.bindPopup(popup_1cae12699850b536e6624d97359d3f1f)
         ;
 
         
     
     
-            marker_c1dc96cdeaccbf625b3100f497ff1e93.bindTooltip(
+            marker_4d3c38cbeb40b480fa511c7eda1a3034.bindTooltip(
                 `<div>
-                     Karpacz
+                     Wrocław Główny
                  </div>`,
                 {
   "sticky": true,
@@ -339,17 +192,17 @@
             );
         
     
-                marker_c1dc96cdeaccbf625b3100f497ff1e93.setIcon(icon_fef9023bb044b7b92a5367a57238c45b);
+                marker_4d3c38cbeb40b480fa511c7eda1a3034.setIcon(icon_10e2460e7856a1389e8dc3a9f20e271e);
             
     
-            var marker_d9315215a083c331718a11bc63704ed5 = L.marker(
-                [51.097917, 17.037957],
+            var marker_03241afd22865984efc3a064a8ee5fd2 = L.marker(
+                [50.097276, 16.658984],
                 {
 }
-            ).addTo(map_e56aa11571aaaab132c7c0fd8c2cb791);
+            ).addTo(map_557629e4df375234a207ab751e953c75);
         
     
-            var icon_6c938a8cacf86c619836a641ea56c5dc = L.AwesomeMarkers.icon(
+            var icon_a7fb0165e645d8677579f5d91b3a1f7d = L.AwesomeMarkers.icon(
                 {
   "markerColor": "red",
   "iconColor": "white",
@@ -360,26 +213,26 @@
             );
         
     
-        var popup_fe638eb85986c0666bb60a1cd6fe2735 = L.popup({
+        var popup_d8fda7cc85dae2cb7a108a47cd226088 = L.popup({
   "maxWidth": 200,
 });
 
         
             
-                var html_36b8a455a9aa5921cf2f6755c77885bc = $(`<div id="html_36b8a455a9aa5921cf2f6755c77885bc" style="width: 100.0%; height: 100.0%;"><b>Wrocław Główny</b><br>odjazd: 15:31:00</div>`)[0];
-                popup_fe638eb85986c0666bb60a1cd6fe2735.setContent(html_36b8a455a9aa5921cf2f6755c77885bc);
+                var html_1fb54020b1a4b8cbcbe72d9e26332468 = $(`<div id="html_1fb54020b1a4b8cbcbe72d9e26332468" style="width: 100.0%; height: 100.0%;"><b>Lichkov</b><br>odjazd: 15:30:00</div>`)[0];
+                popup_d8fda7cc85dae2cb7a108a47cd226088.setContent(html_1fb54020b1a4b8cbcbe72d9e26332468);
             
         
 
-        marker_d9315215a083c331718a11bc63704ed5.bindPopup(popup_fe638eb85986c0666bb60a1cd6fe2735)
+        marker_03241afd22865984efc3a064a8ee5fd2.bindPopup(popup_d8fda7cc85dae2cb7a108a47cd226088)
         ;
 
         
     
     
-            marker_d9315215a083c331718a11bc63704ed5.bindTooltip(
+            marker_03241afd22865984efc3a064a8ee5fd2.bindTooltip(
                 `<div>
-                     Wrocław Główny
+                     Lichkov
                  </div>`,
                 {
   "sticky": true,
@@ -387,7 +240,7 @@
             );
         
     
-                marker_d9315215a083c331718a11bc63704ed5.setIcon(icon_6c938a8cacf86c619836a641ea56c5dc);
+                marker_03241afd22865984efc3a064a8ee5fd2.setIcon(icon_a7fb0165e645d8677579f5d91b3a1f7d);
             
 </script>
 </html>

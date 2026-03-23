@@ -6,8 +6,9 @@ Użycie:
 """
 import heapq
 import itertools
+import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from itertools import groupby
 from typing import Any, Callable
@@ -51,6 +52,7 @@ class SearchConfig:
     is_goal: Callable[[State, set[StopId]], bool]
     get_stop_id: Callable[[State], StopId]
     get_arrival_time: Callable[[Cost], Seconds]
+    heuristic: Callable[[State, set[StopId]], Seconds] | None = None
 
 
 def make_time_config() -> SearchConfig:
@@ -95,6 +97,37 @@ def make_transfers_config() -> SearchConfig:
     )
 
 
+def make_astar_time_config(
+    coords: dict[StopId, tuple[float, float]],
+    target_ids: set[StopId],
+    max_speed_ms: float = 44.4,  # ~160 km/h — górna granica prędkości, heurystyka dopuszczalna
+) -> SearchConfig:
+    """
+    Kryterium: minimalizacja czasu przybycia — algorytm A*.
+    Heurystyka: odległość euklidesowa do najbliższego przystanku docelowego / max_speed_ms.
+    """
+    target_coords: list[tuple[float, float]] = [
+        coords[sid] for sid in target_ids if sid in coords
+    ]
+
+    def heuristic(state: StopId, _target_ids: set[StopId]) -> Seconds:
+        if state not in coords or not target_coords:
+            return 0
+        lat1, lon1 = coords[state]
+        min_dist = min(
+            math.sqrt(
+                ((lat2 - lat1) * 111_320) ** 2
+                + ((lon2 - lon1) * 111_320 * math.cos(math.radians((lat1 + lat2) / 2))) ** 2
+            )
+            for lat2, lon2 in target_coords
+        )
+        return int(min_dist / max_speed_ms)
+
+    config = make_time_config()
+    config.heuristic = heuristic
+    return config
+
+
 def search(
     graph: Graph,
     source_ids: set[StopId],
@@ -108,6 +141,8 @@ def search(
     prev przechowuje (poprzedni_stan, połączenie) zamiast samego połączenia,
     żeby rekonstrukcja ścieżki działała dla dowolnego typu stanu.
     """
+    h = config.heuristic or (lambda s, t: 0)
+
     best_cost: dict[State, Cost] = {}
     prev: dict[State, tuple[State, Connection] | None] = {}
     queue: list = []
@@ -116,10 +151,11 @@ def search(
     for cost, state in config.initial_states(source_ids, departure_time):
         best_cost[state] = cost
         prev[state] = None
-        heapq.heappush(queue, (cost, next(counter), state))
+        f = cost + h(state, target_ids)
+        heapq.heappush(queue, (f, next(counter), cost, state))
 
     while queue:
-        current_cost, _, current_state = heapq.heappop(queue)
+        _, _, current_cost, current_state = heapq.heappop(queue)
 
         # wpis zdezaktualizowany — znaleźliśmy już lepszą ścieżkę do tego stanu
         if current_cost != best_cost.get(current_state):
@@ -132,7 +168,8 @@ def search(
             if new_state not in best_cost or new_cost < best_cost[new_state]:
                 best_cost[new_state] = new_cost
                 prev[new_state] = (current_state, conn)
-                heapq.heappush(queue, (new_cost, next(counter), new_state))
+                new_f = new_cost + h(new_state, target_ids)
+                heapq.heappush(queue, (new_f, next(counter), new_cost, new_state))
 
     return None
 
