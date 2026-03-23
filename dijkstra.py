@@ -1,14 +1,16 @@
 """
 Algorytm Dijkstry dla transportu publicznego.
-Koszt = czas przybycia (najwcześniejsze dotarcie do celu).
-
-Stan w kolejce: (czas_przybycia, stop_id)
 
 Użycie:
     python3 dijkstra.py
 """
 import heapq
+import itertools
+import sys
+from dataclasses import dataclass
 from datetime import date
+from itertools import groupby
+from typing import Any, Callable
 
 from models import (
     Connection,
@@ -28,84 +30,136 @@ from gtfs_loader import (
     build_graph,
 )
 
+# State i Cost to dowolne porównywalne typy — konkretne znaczenie zależy od SearchConfig
+State = Any
+Cost = Any
 
-def dijkstra(
+
+@dataclass
+class SearchConfig:
+    """
+    Konfiguracja wyszukiwania — definiuje kryterium optymalizacji.
+
+    initial_states  -- (source_ids, departure_time) -> [(cost, state), ...]
+    expand          -- (state, cost, graph) -> [(new_cost, new_state, conn), ...]
+    is_goal         -- (state, target_ids) -> bool
+    get_stop_id     -- state -> StopId
+    get_arrival_time-- cost -> Seconds  (do PathResult)
+    """
+    initial_states: Callable[[set[StopId], Seconds], list[tuple[Cost, State]]]
+    expand: Callable[[State, Cost, Graph], list[tuple[Cost, State, Connection]]]
+    is_goal: Callable[[State, set[StopId]], bool]
+    get_stop_id: Callable[[State], StopId]
+    get_arrival_time: Callable[[Cost], Seconds]
+
+
+def make_time_config() -> SearchConfig:
+    """Kryterium: minimalizacja czasu przybycia. Stan = stop_id."""
+    return SearchConfig(
+        initial_states=lambda source_ids, t: [(t, sid) for sid in source_ids],
+        expand=lambda state, cost, graph: [
+            (conn.arrival_time, conn.to_stop_id, conn)
+            for conn in graph.get(state, [])
+            if conn.departure_time >= cost
+        ],
+        is_goal=lambda state, target_ids: state in target_ids,
+        get_stop_id=lambda state: state,
+        get_arrival_time=lambda cost: cost,
+    )
+
+
+def make_transfers_config() -> SearchConfig:
+    """
+    Kryterium: minimalizacja liczby przesiadek. Stan = (stop_id, trip_id).
+    Koszt = (liczba_przesiadek, czas_przybycia) — leksykograficznie:
+    najpierw minimalizuj przesiadki, przy remisie minimalizuj czas.
+    """
+    def expand(state: tuple, cost: tuple, graph: Graph) -> list:
+        stop_id, current_trip = state
+        num_transfers, current_time = cost
+        result = []
+        for conn in graph.get(stop_id, []):
+            if conn.departure_time < current_time:
+                continue
+            is_transfer = current_trip is not None and conn.trip_id != current_trip
+            new_cost = (num_transfers + (1 if is_transfer else 0), conn.arrival_time)
+            result.append((new_cost, (conn.to_stop_id, conn.trip_id), conn))
+        return result
+
+    return SearchConfig(
+        initial_states=lambda source_ids, t: [((0, t), (sid, None)) for sid in source_ids],
+        expand=expand,
+        is_goal=lambda state, target_ids: state[0] in target_ids,
+        get_stop_id=lambda state: state[0],
+        get_arrival_time=lambda cost: cost[1],
+    )
+
+
+def search(
     graph: Graph,
     source_ids: set[StopId],
     target_ids: set[StopId],
-    earliest_departure: Seconds,
+    departure_time: Seconds,
+    config: SearchConfig,
 ) -> PathResult | None:
     """
-    Szuka najwcześniejszego dotarcia z dowolnego source_id do dowolnego target_id.
+    Generyczny algorytm Dijkstry — kryterium optymalizacji definiuje SearchConfig.
 
-    graph             - graf sąsiedztwa zbudowany przez build_graph()
-    source_ids        - wszystkie stop_id przystanku startowego
-    target_ids        - wszystkie stop_id przystanku docelowego
-    earliest_departure - najwcześniejszy odjazd (sekundy od północy)
+    prev przechowuje (poprzedni_stan, połączenie) zamiast samego połączenia,
+    żeby rekonstrukcja ścieżki działała dla dowolnego typu stanu.
     """
-    # best_arrival[stop_id] = najlepszy znany czas przybycia
-    best_arrival: dict[StopId, Seconds] = {}
+    best_cost: dict[State, Cost] = {}
+    prev: dict[State, tuple[State, Connection] | None] = {}
+    queue: list = []
+    counter = itertools.count()  # tiebreaker — unika porównywania stanów w heapie
 
-    # poprzednik: stop_id -> Connection którą tu dotarliśmy
-    prev: dict[StopId, Connection | None] = {}
-
-    # kolejka: (czas_przybycia, stop_id)
-    queue: list[tuple[Seconds, StopId]] = []
-
-    # inicjalizacja — wszystkie perony przystanku startowego
-    for sid in source_ids:
-        best_arrival[sid] = earliest_departure
-        prev[sid] = None
-        heapq.heappush(queue, (earliest_departure, sid))
+    for cost, state in config.initial_states(source_ids, departure_time):
+        best_cost[state] = cost
+        prev[state] = None
+        heapq.heappush(queue, (cost, next(counter), state))
 
     while queue:
-        current_time: Seconds
-        current_stop: StopId
-        current_time, current_stop = heapq.heappop(queue)
+        current_cost, _, current_state = heapq.heappop(queue)
 
-        # pominięcie zdezaktualizowanych wpisów w kolejce
-        if current_time > best_arrival.get(current_stop, float("inf")): # Fallback dla przystankow, ktorych jeszcze nie ma w best_arrival 
+        # wpis zdezaktualizowany — znaleźliśmy już lepszą ścieżkę do tego stanu
+        if current_cost != best_cost.get(current_state):
             continue
 
-        # cel osiągnięty
-        if current_stop in target_ids:
-            return _build_result(current_stop, prev, best_arrival, earliest_departure)
+        if config.is_goal(current_state, target_ids):
+            return _build_result(current_state, prev, best_cost, departure_time, config)
 
-        for conn in graph.get(current_stop, []):
-            # kurs musi odjeżdżać nie wcześniej niż jesteśmy na przystanku
-            if conn.departure_time < current_time:
-                continue
+        for new_cost, new_state, conn in config.expand(current_state, current_cost, graph):
+            if new_state not in best_cost or new_cost < best_cost[new_state]:
+                best_cost[new_state] = new_cost
+                prev[new_state] = (current_state, conn)
+                heapq.heappush(queue, (new_cost, next(counter), new_state))
 
-            if conn.arrival_time < best_arrival.get(conn.to_stop_id, float("inf")): # Fallback dla przystankow, ktorych jeszcze nie ma w best_arrival 
-                best_arrival[conn.to_stop_id] = conn.arrival_time
-                prev[conn.to_stop_id] = conn
-                heapq.heappush(queue, (conn.arrival_time, conn.to_stop_id))
-
-    return None  # brak połączenia
+    return None
 
 
 def _build_result(
-    target_stop: StopId,
-    prev: dict[StopId, Connection | None],
-    best_arrival: dict[StopId, Seconds],
+    target_state: State,
+    prev: dict[State, tuple[State, Connection] | None],
+    best_cost: dict[State, Cost],
     departure_time: Seconds,
+    config: SearchConfig,
 ) -> PathResult:
     """Odtwarza ścieżkę cofając się po prev."""
     legs: list[Connection] = []
-    current: StopId = target_stop
+    current: State = target_state
 
-    while prev.get(current) is not None:
-        conn: Connection = prev[current]  # type: ignore[assignment]
+    while prev[current] is not None:
+        prev_state, conn = prev[current]  # type: ignore[misc]
         legs.append(conn)
-        current = conn.from_stop_id
+        current = prev_state
 
     legs.reverse()
 
     return PathResult(
-        from_stop_name=current,
-        to_stop_name=target_stop,
+        from_stop_name=config.get_stop_id(current),
+        to_stop_name=config.get_stop_id(target_state),
         departure_time=legs[0].departure_time if legs else departure_time,
-        arrival_time=best_arrival[target_stop],
+        arrival_time=config.get_arrival_time(best_cost[target_state]),
         legs=legs,
     )
 
@@ -115,11 +169,8 @@ def print_result(
     stops: dict[StopId, StopName],
     route_names: dict[str, str],
     computation_time: float,
+    criterion: str = "t",
 ) -> None:
-    import sys
-    from itertools import groupby
-
-    # Grupowanie odcinków po trip_id → jeden wiersz na stdout per kurs
     for trip_id, group in groupby(result.legs, key=lambda c: c.trip_id):
         segments = list(group)
         from_name: StopName = stops.get(segments[0].from_stop_id, segments[0].from_stop_id)
@@ -129,6 +180,12 @@ def print_result(
         arr: str = seconds_to_time(segments[-1].arrival_time)
         print(f"{from_name},{to_name},{route},{dep},{arr}")
 
-    # stderr: wartość kryterium (czas przybycia) + czas obliczenia
-    print(seconds_to_time(result.arrival_time), file=sys.stderr)
+    if criterion == "t":
+        print(seconds_to_time(result.arrival_time), file=sys.stderr)
+    else:
+        transfers = sum(
+            1 for i in range(1, len(result.legs))
+            if result.legs[i].trip_id != result.legs[i - 1].trip_id
+        )
+        print(transfers, file=sys.stderr)
     print(f"{computation_time:.3f}s", file=sys.stderr)
