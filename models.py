@@ -19,6 +19,8 @@ class StopVisit:
     stop_id: StopId
     arrival_time: Seconds
     departure_time: Seconds
+    pickup_type: int = 0    # 0 = regularne wsiadanie, 1 = brak wsiadania
+    drop_off_type: int = 0  # 0 = regularne wysiadanie, 1 = brak wysiadania
 
 
 @dataclass(frozen=True)

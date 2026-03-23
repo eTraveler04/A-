@@ -124,6 +124,8 @@ def load_connections(active_trip_ids: set[TripId]) -> list[Connection]:
                 stop_id=row["stop_id"],
                 arrival_time=time_to_seconds(row["arrival_time"]),
                 departure_time=time_to_seconds(row["departure_time"]),
+                pickup_type=int(row.get("pickup_type") or 0),
+                drop_off_type=int(row.get("drop_off_type") or 0),
             ))
 
     connections: list[Connection] = []
@@ -132,6 +134,8 @@ def load_connections(active_trip_ids: set[TripId]) -> list[Connection]:
         for i in range(len(sorted_visits) - 1):
             from_visit: StopVisit = sorted_visits[i]
             to_visit: StopVisit = sorted_visits[i + 1]
+            if from_visit.pickup_type == 1 or to_visit.drop_off_type == 1:
+                continue
             connections.append(Connection(
                 trip_id=trip_id,
                 from_stop_id=from_visit.stop_id,
