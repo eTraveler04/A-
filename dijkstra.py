@@ -53,6 +53,7 @@ class SearchConfig:
     get_stop_id: Callable[[State], StopId]
     get_arrival_time: Callable[[Cost], Seconds]
     heuristic: Callable[[State, set[StopId]], Seconds] | None = None
+    on_visit: Callable[[int, State, Cost], None] | None = None
 
 
 def make_time_config() -> SearchConfig:
@@ -147,6 +148,7 @@ def search(
     prev: dict[State, tuple[State, Connection] | None] = {}
     queue: list = []
     counter = itertools.count()  # tiebreaker — unika porównywania stanów w heapie
+    step = 0
 
     for cost, state in config.initial_states(source_ids, departure_time):
         best_cost[state] = cost
@@ -160,6 +162,10 @@ def search(
         # wpis zdezaktualizowany — znaleźliśmy już lepszą ścieżkę do tego stanu
         if current_cost != best_cost.get(current_state):
             continue
+
+        step += 1
+        if config.on_visit:
+            config.on_visit(step, current_state, current_cost)
 
         if config.is_goal(current_state, target_ids):
             return _build_result(current_state, prev, best_cost, departure_time, config)

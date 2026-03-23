@@ -33,32 +33,50 @@ def time_to_seconds(time_str: str) -> Seconds:
 
 
 def seconds_to_time(seconds: Seconds) -> str:
-    """Zamienia sekundy od północy na 'HH:MM:SS'."""
-    h = seconds // 3600
+    """Zamienia sekundy od północy na 'HH:MM:SS', z oznaczeniem +Nd dla kolejnych dni."""
+    h_total = seconds // 3600
     m = (seconds % 3600) // 60
     s = seconds % 60
-    return f"{h:02}:{m:02}:{s:02}"
+    days, h = divmod(h_total, 24)
+    suffix = f" (+{days}d)" if days > 0 else ""
+    return f"{h:02}:{m:02}:{s:02}{suffix}"
+
+
+def load_stop_normalization() -> dict[StopId, StopId]:
+    """
+    Zwraca mapę stop_id -> canonical_id.
+    Jeśli peron ma parent_station, canonical_id = parent_station.
+    Inaczej canonical_id = stop_id.
+    Dzięki temu wszystkie perony tego samego dworca traktowane są jako jeden węzeł.
+    """
+    norm: dict[StopId, StopId] = {}
+    with open(GTFS_DIR / "stops.txt", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["location_type"] == "0":
+                norm[row["stop_id"]] = row["parent_station"] or row["stop_id"]
+    return norm
 
 
 def load_stops() -> dict[StopId, StopName]:
-    """Zwraca mapę stop_id -> stop_name (tylko fizyczne przystanki)."""
+    """Zwraca mapę canonical_id -> stop_name."""
     stops: dict[StopId, StopName] = {}
     with open(GTFS_DIR / "stops.txt", encoding="utf-8") as f:
-        reader: csv.DictReader[str] = csv.DictReader(f)
-        for row in reader:
+        for row in csv.DictReader(f):
             if row["location_type"] == "0":
-                stops[row["stop_id"]] = row["stop_name"]
+                canonical = row["parent_station"] or row["stop_id"]
+                stops[canonical] = row["stop_name"]
     return stops
 
 
 def load_stops_by_name() -> dict[StopName, list[StopId]]:
-    """Zwraca mapę stop_name -> [stop_id, ...] (jeden przystanek może mieć wiele ID)."""
+    """Zwraca mapę stop_name -> [canonical_id, ...] (deduplikowane)."""
     result: dict[StopName, list[StopId]] = defaultdict(list)
     with open(GTFS_DIR / "stops.txt", encoding="utf-8") as f:
-        reader: csv.DictReader[str] = csv.DictReader(f)
-        for row in reader:
+        for row in csv.DictReader(f):
             if row["location_type"] == "0":
-                result[row["stop_name"]].append(row["stop_id"])
+                canonical = row["parent_station"] or row["stop_id"]
+                if canonical not in result[row["stop_name"]]:
+                    result[row["stop_name"]].append(canonical)
     return dict(result)
 
 
@@ -106,11 +124,14 @@ def load_active_trip_ids(active_service_ids: set[ServiceId]) -> set[TripId]:
     return active_trips
 
 
-def load_connections(active_trip_ids: set[TripId]) -> list[Connection]:
+def load_connections(active_trip_ids: set[TripId], time_offset: Seconds = 0) -> list[Connection]:
     """
     Buduje listę połączeń między kolejnymi przystankami dla aktywnych kursów.
     Każda krawędź = jeden odcinek kursu (przystanek N -> przystanek N+1).
+    stop_id normalizowane do parent_station, żeby przesiadki między peronami działały.
+    time_offset: przesuniecie czasowe w sekundach (86400 dla kursów następnego dnia).
     """
+    norm = load_stop_normalization()
     trip_stops: dict[TripId, list[StopVisit]] = defaultdict(list)
 
     with open(GTFS_DIR / "stop_times.txt", encoding="utf-8") as f:
@@ -121,9 +142,9 @@ def load_connections(active_trip_ids: set[TripId]) -> list[Connection]:
                 continue
             trip_stops[trip_id].append(StopVisit(
                 sequence=int(row["stop_sequence"]),
-                stop_id=row["stop_id"],
-                arrival_time=time_to_seconds(row["arrival_time"]),
-                departure_time=time_to_seconds(row["departure_time"]),
+                stop_id=norm.get(row["stop_id"], row["stop_id"]),
+                arrival_time=time_to_seconds(row["arrival_time"]) + time_offset,
+                departure_time=time_to_seconds(row["departure_time"]) + time_offset,
                 pickup_type=int(row.get("pickup_type") or 0),
                 drop_off_type=int(row.get("drop_off_type") or 0),
             ))
@@ -148,13 +169,13 @@ def load_connections(active_trip_ids: set[TripId]) -> list[Connection]:
 
 
 def load_stop_coords() -> dict[StopId, tuple[float, float]]:
-    """Zwraca mapę stop_id -> (lat, lon)."""
+    """Zwraca mapę canonical_id -> (lat, lon)."""
     coords: dict[StopId, tuple[float, float]] = {}
     with open(GTFS_DIR / "stops.txt", encoding="utf-8") as f:
-        reader: csv.DictReader[str] = csv.DictReader(f)
-        for row in reader:
+        for row in csv.DictReader(f):
             if row["location_type"] == "0":
-                coords[row["stop_id"]] = (float(row["stop_lat"]), float(row["stop_lon"]))
+                canonical = row["parent_station"] or row["stop_id"]
+                coords[canonical] = (float(row["stop_lat"]), float(row["stop_lon"]))
     return coords
 
 

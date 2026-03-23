@@ -5,10 +5,11 @@ Użycie:
     python3 main.py
     python3 main.py "Wrocław Główny" "Legnica" t "08:30" "poniedzialek"
     python3 main.py "Wrocław Główny" "Legnica" p "08:30" "1"   # 1=pon, 7=nie
+    python3 main.py "Wrocław Główny" "Legnica" t "08:30" "1" --verbose
 """
 import sys
 import time
-from datetime import date
+from datetime import date, timedelta
 
 from gtfs_loader import (
     Graph,
@@ -38,7 +39,9 @@ def main() -> None:
     route_names: dict[str, str] = load_trip_to_route()
     print("Gotowe.\n")
 
-    args = sys.argv[1:]
+    args = [a for a in sys.argv[1:] if a != "--verbose"]
+    verbose = "--verbose" in sys.argv
+
     if len(args) >= 4:
         from_name, to_name, criterion, time_str = args[0], args[1], args[2], args[3]
         travel_date = parse_day(args[4]) if len(args) >= 5 else date.today()
@@ -65,6 +68,11 @@ def main() -> None:
     active_services = load_active_service_ids(travel_date)
     active_trips = load_active_trip_ids(active_services)
     connections = load_connections(active_trips)
+
+    next_day_services = load_active_service_ids(travel_date + timedelta(days=1))
+    next_day_trips = load_active_trip_ids(next_day_services)
+    connections += load_connections(next_day_trips, time_offset=86400)
+
     graph: Graph = build_graph(connections)
 
     if criterion == "p":
@@ -73,6 +81,15 @@ def main() -> None:
         config = make_astar_time_config(coords, target_ids)
     else:
         config = make_time_config()
+
+    if verbose:
+        from gtfs_loader import seconds_to_time
+        def on_visit(step: int, state, cost) -> None:
+            stop_id = state if isinstance(state, str) else state[0]
+            name = stops.get(stop_id, stop_id)
+            arrival = seconds_to_time(cost if isinstance(cost, int) else cost[1])
+            print(f"  [{step:>4}] {name:<35} przybycie: {arrival}", file=sys.stderr)
+        config.on_visit = on_visit
 
     t0: float = time.perf_counter()
     result: PathResult | None = search(graph, source_ids, target_ids, earliest_departure, config)
