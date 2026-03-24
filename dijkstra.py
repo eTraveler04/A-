@@ -86,7 +86,6 @@ def make_transfers_config() -> SearchConfig:
     )
 
 
-
 def search(
     graph: Graph,
     source_ids: set[StopId],
