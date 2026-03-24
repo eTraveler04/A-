@@ -92,11 +92,11 @@ def main() -> None:
         config.on_visit = on_visit
 
     t0: float = time.perf_counter()
-    result: PathResult | None = search(graph, source_ids, target_ids, earliest_departure, config)
+    result, visited_nodes = search(graph, source_ids, target_ids, earliest_departure, config)
     computation_time: float = time.perf_counter() - t0
 
     if result:
-        print_result(result, stops, route_names, computation_time, criterion)
+        print_result(result, stops, route_names, computation_time, criterion, visited_nodes)
         visualize(result, stops, coords, route_names)
     else:
         print("Brak połączenia.")

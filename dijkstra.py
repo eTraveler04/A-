@@ -142,7 +142,7 @@ def search(
     prev przechowuje (poprzedni_stan, połączenie) zamiast samego połączenia,
     żeby rekonstrukcja ścieżki działała dla dowolnego typu stanu.
     """
-    h = config.heuristic or (lambda s, t: 0)
+    h = config.heuristic
 
     best_cost: dict[State, Cost] = {}
     prev: dict[State, tuple[State, Connection] | None] = {}
@@ -153,7 +153,7 @@ def search(
     for cost, state in config.initial_states(source_ids, departure_time):
         best_cost[state] = cost
         prev[state] = None
-        f = cost + h(state, target_ids)
+        f = cost + h(state, target_ids) if h else cost
         heapq.heappush(queue, (f, next(counter), cost, state))
 
     while queue:
@@ -168,16 +168,16 @@ def search(
             config.on_visit(step, current_state, current_cost)
 
         if config.is_goal(current_state, target_ids):
-            return _build_result(current_state, prev, best_cost, departure_time, config)
+            return _build_result(current_state, prev, best_cost, departure_time, config), step
 
         for new_cost, new_state, conn in config.expand(current_state, current_cost, graph):
             if new_state not in best_cost or new_cost < best_cost[new_state]:
                 best_cost[new_state] = new_cost
                 prev[new_state] = (current_state, conn)
-                new_f = new_cost + h(new_state, target_ids)
+                new_f = new_cost + h(new_state, target_ids) if h else new_cost
                 heapq.heappush(queue, (new_f, next(counter), new_cost, new_state))
 
-    return None
+    return None, step
 
 
 def _build_result(
@@ -213,6 +213,7 @@ def print_result(
     route_names: dict[str, str],
     computation_time: float,
     criterion: str = "t",
+    visited_nodes: int = 0,
 ) -> None:
     # --- odcinki (jeden wiersz per kurs) ---
     for trip_id, group in groupby(result.legs, key=lambda c: c.trip_id):
@@ -250,6 +251,7 @@ def print_result(
     print(f"Czas:        {days:02d}:{hours:02d}:{minutes:02d}")
     print(f"Przesiadki:  {transfers}")
     print(f"Linie:       {lines}")
+    print(f"Odwiedzone węzły: {visited_nodes}")
 
     # --- stderr: wartość kryterium + czas obliczenia ---
     if criterion == "t":
