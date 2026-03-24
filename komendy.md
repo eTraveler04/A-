@@ -99,3 +99,4 @@ python main2.py "Wrocław Główny" "Legnica;Jelenia Góra;Karpacz" t "08:30" "p
 ```
 python main2.py "Wrocław Główny" "Legnica;Jelenia Góra;Karpacz" t "08:30" "pon" --tabu-size auto --aspiration --sample 3
 ```
+python main2.py "Wrocław Główny" "Legnica;Jelenia Góra;Karpacz" t "08:30" "pon" --tabu-size auto --aspiration --sample 3
