@@ -26,7 +26,7 @@ from gtfs_loader import (
     load_trip_to_route,
     time_to_seconds,
 )
-from dijkstra import search, make_time_config, make_transfers_config, make_astar_time_config, print_result, PathResult
+from dijkstra import search, make_time_config, make_transfers_config, make_astar_transfers_config, make_astar_time_config, print_result
 from visualize import visualize
 from utils import parse_day
 
@@ -48,7 +48,7 @@ def main() -> None:
     else:
         from_name = input("Skąd: ").strip()
         to_name = input("Dokąd: ").strip()
-        criterion = input("Kryterium (t = czas, p = przesiadki, a = A* czas): ").strip()
+        criterion = input("Kryterium (t = czas, p = przesiadki, at = A* czas, ap = A* przesiadki): ").strip()
         time_str = input("Najwcześniejszy odjazd (HH:MM): ").strip()
         day_str = input("Dzień tygodnia [domyślnie: dziś]: ").strip()
         travel_date = parse_day(day_str) if day_str else date.today()
@@ -75,9 +75,11 @@ def main() -> None:
 
     graph: Graph = build_graph(connections)
 
-    if criterion == "p":
+    if criterion == "ap":
+        config = make_astar_transfers_config(graph, target_ids)
+    elif criterion == "p":
         config = make_transfers_config()
-    elif criterion == "a":
+    elif criterion == "at":
         config = make_astar_time_config(coords, target_ids)
     else:
         config = make_time_config()

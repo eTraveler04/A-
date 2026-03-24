@@ -1,15 +1,11 @@
 """
 Algorytm Dijkstry dla transportu publicznego.
-
-Użycie:
-    python3 dijkstra.py
 """
 import heapq
 import itertools
 import math
 import sys
-from dataclasses import dataclass, field
-from datetime import date
+from dataclasses import dataclass
 from itertools import groupby
 from typing import Any, Callable
 
@@ -21,15 +17,7 @@ from models import (
     StopId,
     StopName,
 )
-from gtfs_loader import (
-    seconds_to_time,
-    load_stops,
-    load_stops_by_name,
-    load_active_service_ids,
-    load_active_trip_ids,
-    load_connections,
-    build_graph,
-)
+from gtfs_loader import seconds_to_time
 
 # State i Cost to dowolne porównywalne typy — konkretne znaczenie zależy od SearchConfig
 State = Any
@@ -52,7 +40,8 @@ class SearchConfig:
     is_goal: Callable[[State, set[StopId]], bool]
     get_stop_id: Callable[[State], StopId]
     get_arrival_time: Callable[[Cost], Seconds]
-    heuristic: Callable[[State, set[StopId]], Seconds] | None = None
+    heuristic: Callable[[State, set[StopId]], Any] | None = None
+    make_f: Callable[[Cost, Any], Any] | None = None
     on_visit: Callable[[int, State, Cost], None] | None = None
 
 
@@ -96,6 +85,34 @@ def make_transfers_config() -> SearchConfig:
         get_stop_id=lambda state: state[0],
         get_arrival_time=lambda cost: cost[1],
     )
+
+
+def make_astar_transfers_config(
+    graph: "Graph",
+    target_ids: set[StopId],
+) -> SearchConfig:
+    """
+    Kryterium: minimalizacja liczby przesiadek — algorytm A*.
+    Heurystyka: 0 jeśli obecny kurs dociera do celu, 1 w przeciwnym razie.
+    """
+    trips_to_target: set[str] = set()
+    for connections in graph.values():
+        for conn in connections:
+            if conn.to_stop_id in target_ids:
+                trips_to_target.add(conn.trip_id)
+
+    def heuristic(state: tuple, _target_ids: set[StopId]) -> int:
+        stop_id, trip_id = state
+        if stop_id in target_ids:
+            return 0
+        if trip_id is not None and trip_id in trips_to_target:
+            return 0
+        return 1
+
+    config = make_transfers_config()
+    config.heuristic = heuristic
+    config.make_f = lambda cost, h: (cost[0] + h, cost[1])
+    return config
 
 
 def make_astar_time_config(
@@ -153,7 +170,11 @@ def search(
     for cost, state in config.initial_states(source_ids, departure_time):
         best_cost[state] = cost
         prev[state] = None
-        f = cost + h(state, target_ids) if h else cost
+        if h:
+            h_val = h(state, target_ids)
+            f = config.make_f(cost, h_val) if config.make_f else cost + h_val
+        else:
+            f = cost
         heapq.heappush(queue, (f, next(counter), cost, state))
 
     while queue:
@@ -174,7 +195,11 @@ def search(
             if new_state not in best_cost or new_cost < best_cost[new_state]:
                 best_cost[new_state] = new_cost
                 prev[new_state] = (current_state, conn)
-                new_f = new_cost + h(new_state, target_ids) if h else new_cost
+                if h:
+                    h_val = h(new_state, target_ids)
+                    new_f = config.make_f(new_cost, h_val) if config.make_f else new_cost + h_val
+                else:
+                    new_f = new_cost
                 heapq.heappush(queue, (new_f, next(counter), new_cost, new_state))
 
     return None, step
@@ -199,8 +224,8 @@ def _build_result(
     legs.reverse()
 
     return PathResult(
-        from_stop_name=config.get_stop_id(current),
-        to_stop_name=config.get_stop_id(target_state),
+        from_stop_id=config.get_stop_id(current),
+        to_stop_id=config.get_stop_id(target_state),
         departure_time=legs[0].departure_time if legs else departure_time,
         arrival_time=config.get_arrival_time(best_cost[target_state]),
         legs=legs,
@@ -241,8 +266,8 @@ def print_result(
         route_names.get(leg.trip_id, leg.trip_id) for leg in result.legs
     ))
 
-    from_stop: StopName = stops.get(result.from_stop_name, result.from_stop_name)
-    to_stop: StopName = stops.get(result.to_stop_name, result.to_stop_name)
+    from_stop: StopName = stops.get(result.from_stop_id, result.from_stop_id)
+    to_stop: StopName = stops.get(result.to_stop_id, result.to_stop_id)
 
     print()
     print(f"Trasa:       {from_stop} → {to_stop}")
@@ -254,7 +279,7 @@ def print_result(
     print(f"Odwiedzone węzły: {visited_nodes}")
 
     # --- stderr: wartość kryterium + czas obliczenia ---
-    if criterion == "t":
+    if criterion in ("t", "at"):
         print(seconds_to_time(arr_time), file=sys.stderr)
     else:
         print(transfers, file=sys.stderr)

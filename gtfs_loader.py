@@ -19,7 +19,7 @@ from models import (
     ServiceId,
     StopId,
     StopName,
-    StopVisit,
+    StopTimeRow,
     TripId,
 )
 
@@ -132,7 +132,7 @@ def load_connections(active_trip_ids: set[TripId], time_offset: Seconds = 0) -> 
     time_offset: przesuniecie czasowe w sekundach (86400 dla kursów następnego dnia).
     """
     norm = load_stop_normalization()
-    trip_stops: dict[TripId, list[StopVisit]] = defaultdict(list)
+    trip_stops: dict[TripId, list[StopTimeRow]] = defaultdict(list)
 
     with open(GTFS_DIR / "stop_times.txt", encoding="utf-8") as f:
         reader: csv.DictReader[str] = csv.DictReader(f)
@@ -140,22 +140,21 @@ def load_connections(active_trip_ids: set[TripId], time_offset: Seconds = 0) -> 
             trip_id: TripId = row["trip_id"]
             if trip_id not in active_trip_ids:
                 continue
-            trip_stops[trip_id].append(StopVisit(
+            trip_stops[trip_id].append(StopTimeRow(
                 sequence=int(row["stop_sequence"]),
                 stop_id=norm.get(row["stop_id"], row["stop_id"]),
                 arrival_time=time_to_seconds(row["arrival_time"]) + time_offset,
                 departure_time=time_to_seconds(row["departure_time"]) + time_offset,
                 pickup_type=int(row.get("pickup_type") or 0),
-                drop_off_type=int(row.get("drop_off_type") or 0),
             ))
 
     connections: list[Connection] = []
     for trip_id, visits in trip_stops.items():
-        sorted_visits: list[StopVisit] = sorted(visits, key=lambda v: v.sequence)  # kolejność przystanków w kursie
+        sorted_visits: list[StopTimeRow] = sorted(visits, key=lambda v: v.sequence)  # kolejność przystanków w kursie
         for i in range(len(sorted_visits) - 1):
-            from_visit: StopVisit = sorted_visits[i]
-            to_visit: StopVisit = sorted_visits[i + 1]
-            if from_visit.pickup_type == 1 or to_visit.drop_off_type == 1:
+            from_visit: StopTimeRow = sorted_visits[i]
+            to_visit: StopTimeRow = sorted_visits[i + 1]
+            if from_visit.pickup_type == 1:
                 continue
             connections.append(Connection(
                 trip_id=trip_id,

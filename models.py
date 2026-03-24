@@ -13,14 +13,13 @@ Graph = dict[StopId, list["Connection"]]
 
 
 @dataclass(frozen=True)
-class StopVisit:
+class StopTimeRow:
     """Pojedyncze zatrzymanie kursu na przystanku."""
     sequence: int
     stop_id: StopId
     arrival_time: Seconds
     departure_time: Seconds
     pickup_type: int = 0    # 0 = regularne wsiadanie, 1 = brak wsiadania
-    drop_off_type: int = 0  # 0 = regularne wysiadanie, 1 = brak wysiadania
 
 
 @dataclass(frozen=True)
@@ -36,8 +35,8 @@ class Connection:
 @dataclass
 class PathResult:
     """Wynik wyszukiwania trasy."""
-    from_stop_name: StopName
-    to_stop_name: StopName
+    from_stop_id: StopId
+    to_stop_id: StopId
     departure_time: Seconds
     arrival_time: Seconds
     legs: list[Connection]  # kolejne odcinki trasy
