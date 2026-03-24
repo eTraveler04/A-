@@ -54,3 +54,6 @@ python main.py "Wrocław Główny" "Legnica" ap "08:30" "pon"
 ```
 python main.py "Wrocław Główny" "Jelenia Góra" ap "10:00" "pon"
 ```
+
+
+python main.py "Lubawka" "Rokitki" t "8:40" "pt" 

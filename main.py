@@ -26,7 +26,8 @@ from gtfs_loader import (
     load_trip_to_route,
     time_to_seconds,
 )
-from dijkstra import search, make_time_config, make_transfers_config, make_astar_transfers_config, make_astar_time_config, make_astar_time_improved_config, print_result
+from dijkstra import search, make_time_config, make_transfers_config, print_result
+from configs import make_astar_transfers_config, make_astar_time_config, make_astar_time_improved_config
 from visualize import visualize
 from utils import parse_day
 
