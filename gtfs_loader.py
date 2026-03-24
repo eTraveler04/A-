@@ -149,11 +149,11 @@ def load_connections(active_trip_ids: set[TripId], time_offset: Seconds = 0) -> 
             ))
 
     connections: list[Connection] = []
-    for trip_id, visits in trip_stops.items():
-        sorted_visits: list[StopTimeRow] = sorted(visits, key=lambda v: v.sequence)  # kolejność przystanków w kursie
-        for i in range(len(sorted_visits) - 1):
-            from_visit: StopTimeRow = sorted_visits[i]
-            to_visit: StopTimeRow = sorted_visits[i + 1]
+    for trip_id, stop_times in trip_stops.items():
+        sorted_stop_times: list[StopTimeRow] = sorted(stop_times, key=lambda v: v.sequence)  # kolejność przystanków w kursie
+        for i in range(len(sorted_stop_times) - 1):
+            from_visit: StopTimeRow = sorted_stop_times[i]
+            to_visit: StopTimeRow = sorted_stop_times[i + 1]
             if from_visit.pickup_type == 1:
                 continue
             connections.append(Connection(

@@ -5,6 +5,7 @@ import heapq
 import itertools
 import math
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from itertools import groupby
 from typing import Any, Callable
@@ -146,6 +147,55 @@ def make_astar_time_config(
     return config
 
 
+def make_astar_time_improved_config(
+    graph: Graph,
+    target_ids: set[StopId],
+) -> SearchConfig:
+    """
+    Kryterium: minimalizacja czasu przybycia — algorytm A* z ulepszoną heurystyką.
+    Heurystyka: odwrócona Dijkstra od celu na uproszczonym grafie (minimalne czasy przejazdu,
+    bez uwzględniania rozkładu jazdy). Daje dolne ograniczenie rzeczywistego czasu przejazdu.
+    """
+    # Minimalne czasy przejazdu między przystankami (ignorujemy rozkład)
+    min_travel: dict[tuple[StopId, StopId], int] = {}
+    for conns in graph.values():
+        for conn in conns:
+            key = (conn.from_stop_id, conn.to_stop_id)
+            t = conn.arrival_time - conn.departure_time
+            if key not in min_travel or t < min_travel[key]:
+                min_travel[key] = t
+
+    # Odwrócony graf: to_stop -> [(from_stop, min_travel_time)]
+    rev: dict[StopId, list[tuple[StopId, int]]] = defaultdict(list)
+    for (from_stop, to_stop), t in min_travel.items():
+        rev[to_stop].append((from_stop, t))
+
+    # Dijkstra wstecz od celu
+    dist: dict[StopId, int] = {}
+    queue: list = []
+    for tid in target_ids:
+        dist[tid] = 0
+        heapq.heappush(queue, (0, tid))
+
+    while queue:
+        d, v = heapq.heappop(queue)
+        if d > dist.get(v, float("inf")):
+            continue
+        for u, t in rev.get(v, []):
+            nd = d + t
+            if nd < dist.get(u, float("inf")):
+                dist[u] = nd
+                heapq.heappush(queue, (nd, u))
+
+    def heuristic(state: StopId, _target_ids: set[StopId]) -> Seconds:
+        # Zwraca 0 jeśli brak danych — bezpieczne (heurystyka trywialna)
+        return dist.get(state, 0)
+
+    config = make_time_config()
+    config.heuristic = heuristic
+    return config
+
+
 def search(
     graph: Graph,
     source_ids: set[StopId],
@@ -279,7 +329,7 @@ def print_result(
     print(f"Odwiedzone węzły: {visited_nodes}")
 
     # --- stderr: wartość kryterium + czas obliczenia ---
-    if criterion in ("t", "at"):
+    if criterion in ("t", "at", "ats"):
         print(seconds_to_time(arr_time), file=sys.stderr)
     else:
         print(transfers, file=sys.stderr)
