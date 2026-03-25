@@ -13,7 +13,7 @@ Sieć połączeń kolejowych modelowana jest jako **skierowany graf zależny od 
 
 Formalnie, dla każdej pary kolejnych przystanków $(i, i+1)$ w kursie tworzona jest krawędź:
 
-$$e = (\text{stop}_i \to \text{stop}_{i+1},\ \text{departure\_time}_i,\ \text{arrival\_time}_{i+1})$$
+$$e = (\mathrm{stop}_i \to \mathrm{stop}_{i+1},\ t^{\mathrm{dep}}_i,\ t^{\mathrm{arr}}_{i+1})$$
 
 Przesiadka modelowana jest implicitnie — pasażer czeka na przystanku do najbliższego dostępnego odjazdu w kierunku celu.
 
@@ -24,7 +24,7 @@ Graf jest zależny od czasu — w przeciwieństwie do klasycznego grafu ważoneg
 Algorytm Dijkstry znajduje najkrótszą ścieżkę w grafie ważonym z nieujemnymi wagami. Operuje na kolejce priorytetowej, z której zawsze wybierany jest wierzchołek o najniższym dotychczasowym koszcie $g(v)$.
 
 **Inicjalizacja:**
-$$g(s) = t_\text{start}, \quad g(v) = \infty \text{ dla } v \neq s$$
+$$g(s) = t_{\mathrm{start}}, \quad g(v) = \infty \text{ dla } v \neq s$$
 
 **Relaksacja krawędzi** — dla każdego sąsiada $u$ bieżącego wierzchołka $v$:
 $$\text{jeśli } \text{departure}(v \to u) \geq g(v) \text{ oraz } \text{arrival}(v \to u) < g(u): \quad g(u) \leftarrow \text{arrival}(v \to u)$$
@@ -50,7 +50,7 @@ Węzły w złym kierunku od celu otrzymują duże $h$, przez co trafiają na kon
 
 Koszt $g(v)$ to czas przybycia w sekundach. Heurystyka szacuje minimalny czas dotarcia z przystanku $v$ do celu jako odległość euklidesową w linii prostej podzieloną przez maksymalną prędkość pociągu:
 
-$$h(v) = \frac{d_\text{euklid}(v,\ \text{cel})}{v_\text{max}}, \quad v_\text{max} = 44{,}4\ \text{m/s} \approx 160\ \text{km/h}$$
+$$h(v) = \frac{d_{\mathrm{euklid}}(v,\ \text{cel})}{v_{\mathrm{max}}}, \quad v_{\mathrm{max}} = 44{,}4\ \text{m/s} \approx 160\ \text{km/h}$$
 
 Odległość euklidesowa liczona jest ze współrzędnych geograficznych WGS84 z przeliczeniem stopni na metry:
 
@@ -64,7 +64,7 @@ Heurystyka euklidesowa jest dopuszczalna, ale zgrubna — pociąg nigdy nie jedz
 
 **Odwrócona Dijkstra od celu** — przed startem algorytmu uruchamiamy Dijkstrę wstecz od stacji docelowej na uproszczonym grafie, gdzie waga krawędzi to minimalny czas przejazdu między przystankami (ignorujemy rozkład jazdy i czasy oczekiwania):
 
-$$w_\text{min}(u \to v) = \min_{\text{kursy}} (\text{arrival}_v - \text{departure}_u)$$
+$$w_{\mathrm{min}}(u \to v) = \min_{\text{kursy}} (t^{\mathrm{arr}}_v - t^{\mathrm{dep}}_u)$$
 
 Wynik $\text{dist}[v]$ stanowi dolne ograniczenie rzeczywistego czasu dotarcia z $v$ do celu. Heurystyka jest dopuszczalna, ponieważ:
 - ignoruje czasy oczekiwania na przesiadki (zawsze $\geq 0$)
@@ -76,11 +76,11 @@ Prekomputacja wykonywana jest raz w $O(|E| \log |V|)$ przed startem wyszukiwania
 
 Koszt $g(v)$ jest krotką $(p, t)$, gdzie $p$ to liczba przesiadek, $t$ to czas przybycia. Sortowanie leksykograficzne — najpierw minimalizujemy przesiadki, przy remisie minimalizujemy czas.
 
-Stan algorytmu rozszerzony jest o aktualny kurs: $v = (\text{stop\_id},\ \text{trip\_id})$. Przesiadka naliczana jest gdy pasażer zmienia `trip_id`.
+Stan algorytmu rozszerzony jest o aktualny kurs: $v = (\mathrm{stopId},\ \mathrm{tripId})$. Przesiadka naliczana jest gdy pasażer zmienia `trip_id`.
 
 Heurystyka opiera się na pytaniu: czy obecny kurs dojedzie do celu bez żadnej przesiadki?
 
-$$h(v) = \begin{cases} 0 & \text{jeśli } \text{trip\_id}(v) \in \text{trips\_to\_target} \\ 1 & \text{w przeciwnym razie} \end{cases}$$
+$$h(v) = \begin{cases} 0 & \text{jeśli } \mathrm{tripId}(v) \in \mathrm{tripsToTarget} \\ 1 & \text{w przeciwnym razie} \end{cases}$$
 
 Jest to heurystyka dopuszczalna — jeśli obecny kurs nie dociera do celu, co najmniej jedna przesiadka jest nieunikniona.
 
@@ -430,136 +430,114 @@ def search(graph, source_ids, target_ids, departure_time, config):
 
 ## 3. Wyniki
 
-Testy wykonano na danych Kolei Dolnośląskich, poniedziałek. Kryterium: `t` = Dijkstra czas, `p` = Dijkstra przesiadki, `at` = A* czas (euklid), `ats` = A* czas (rev-Dijkstra), `ap` = A* przesiadki.
+Testy wykonano na danych Kolei Dolnośląskich, piątek, trasa Lubawka → Rokitki (odjazd 08:40). Kryterium: `t` = Dijkstra czas, `p` = Dijkstra przesiadki, `at` = A* czas (euklid), `ats` = A* czas (rev-Dijkstra), `ap` = A* przesiadki.
 
-### 3.1 Wrocław Główny → Jelenia Góra, odjazd 10:00
+### 3.1 Lubawka → Rokitki, kryterium czasu (`t`)
 
-**Wyniki wyszukiwania:**
-
-| Kryterium | Odjazd | Przyjazd | Przesiadki | Linie | Węzły |
-|---|---|---|---|---|---|
-| `t` | 10:10 | 12:26 | 0 | D6 | 207 |
-| `p` | 10:10 | 12:26 | 0 | D6 | 440 |
-| `at` | 10:10 | 12:26 | 0 | D6 | 145 |
-| `ats` | 10:10 | 12:26 | 0 | D6 | 49 |
-| `ap` | 10:10 | 12:26 | 0 | D6 | 44 |
-
-**Trasa (wszystkie kryteria identyczne):**
 ```
-Wrocław Główny → Jelenia Góra  [D6]  10:10 → 12:26
+$ python main.py "Lubawka" "Rokitki" t "8:40" "pt"
+
+Lubawka → Sędzisław              [D66]  09:31:00 → 09:51:00
+Sędzisław → Wałbrzych Fabryczny  [D60]  09:56:00 → 10:22:00
+Wałbrzych Fabryczny → Jaworzyna Śląska  [D60]  10:24:00 → 10:53:00
+Jaworzyna Śląska → Legnica       [D91]  10:59:00 → 11:49:00
+Legnica → Chojnów                [D1]   12:14:00 → 12:26:00
+Chojnów → Rokitki                [D14]  13:20:00 → 13:30:00
+
+Trasa:       Lubawka → Rokitki
+Odjazd:      09:31:00
+Przyjazd:    13:30:00
+Czas:        00:03:59
+Przesiadki:  5
+Linie:       ['D66', 'D60', 'D91', 'D1', 'D14']
+Odwiedzone węzły: 239
 ```
 
-**Redukcja odwiedzonych węzłów względem Dijkstry (`t`):**
-
-| Algorytm | Węzły | Redukcja |
-|---|---|---|
-| Dijkstra `t` | 207 | — |
-| A* euklid `at` | 145 | −30% |
-| A* rev-Dijkstra `ats` | 49 | −76% |
-| A* przesiadki `ap` | 44 | −79% |
-
-Trasa bezpośrednia — wszystkie algorytmy zwracają ten sam wynik. `ap` odwiedza najmniej węzłów, bo heurystyka natychmiast rozpoznaje że D6 dociera do celu (h=0) i nadaje mu najwyższy priorytet.
+Trasa prowadzi przez Wałbrzych i Legnicę — brak połączeń bezpośrednich między małymi stacjami. Algorytm znalazł 5 przesiadek jako koszt najszybszego dotarcia.
 
 ---
 
-### 3.2 Wrocław Główny → Legnica, odjazd 08:30
+### 3.2 Lubawka → Rokitki, kryterium przesiadek (`p`)
 
-**Wyniki wyszukiwania:**
-
-| Kryterium | Odjazd | Przyjazd | Przesiadki | Linie | Węzły |
-|---|---|---|---|---|---|
-| `t` | 08:43 | 09:45 | 1 | D2, D1 | 70 |
-| `p` | 08:49 | 09:45 | **0** | D1 | 95 |
-| `at` | 08:43 | 09:45 | 1 | D2, D1 | 43 |
-| `ats` | 08:43 | 09:45 | 1 | D2, D1 | 28 |
-| `ap` | 08:49 | 09:45 | **0** | D1 | 20 |
-
-**Trasa kryterium czasu (`t`, `at`, `ats`):**
 ```
-Wrocław Główny → Wrocław Muchobór  [D2]  08:43 → 08:48
-Wrocław Muchobór → Legnica          [D1]  08:54 → 09:45
-```
+$ python main.py "Lubawka" "Rokitki" p "8:40" "pt"
 
-**Trasa kryterium przesiadek (`p`, `ap`):**
-```
-Wrocław Główny → Legnica  [D1]  08:49 → 09:45
+Lubawka → Sędzisław        [D66]  09:31:00 → 09:51:00
+Sędzisław → Wrocław Główny [D60]  09:56:00 → 11:38:00
+Wrocław Główny → Rokitki   [D14]  13:35:00 → 14:44:00
+
+Trasa:       Lubawka → Rokitki
+Odjazd:      09:31:00
+Przyjazd:    14:44:00
+Czas:        00:05:13
+Przesiadki:  2
+Linie:       ['D66', 'D60', 'D14']
+Odwiedzone węzły: 2174
 ```
 
-Kryteria czasu i przesiadek dają różne trasy — kryterium czasu wybiera wcześniejszy odjazd (08:43) kosztem przesiadki, kryterium przesiadek czeka 6 minut na bezpośredni pociąg D1 (08:49). Czas przyjazdu identyczny.
+Kryterium przesiadek wybiera trasę przez Wrocław — 2 przesiadki zamiast 5, kosztem 1h 14min dłuższej podróży. Algorytm odwiedza 2174 węzłów (vs 239 dla `t`) — kryterium przesiadkowe przeszukuje znacznie więcej przestrzeni.
 
 ---
 
-### 3.3 Wrocław Główny → Karpacz, odjazd 15:20
+### 3.3 Lubawka → Rokitki, A* czas euklid (`at`) i rev-Dijkstra (`ats`)
 
-**Wyniki wyszukiwania:**
-
-| Kryterium | Odjazd | Przyjazd | Przesiadki | Linie | Węzły |
-|---|---|---|---|---|---|
-| `t` | 15:40 | 18:53 | 2 | D6, D6, D62 | 267 |
-| `p` | 15:55 | 18:53 | **1** | D6, D62 | 6175 |
-| `at` | 15:40 | 18:53 | 2 | D6, D6, D62 | 250 |
-| `ats` | 15:40 | 18:53 | 2 | D6, D6, D62 | 144 |
-| `ap` | 15:55 | 18:53 | **1** | D6, D62 | 928 |
-
-**Trasa kryterium czasu (`t`, `at`, `ats`):**
 ```
-Wrocław Główny → Wałbrzych Miasto  [D6]   15:40 → 16:46
-Wałbrzych Miasto → Jelenia Góra    [D6]   17:01 → 18:10  (zmiana składu)
-Jelenia Góra → Karpacz             [D62]  18:35 → 18:53
-```
+$ python main.py "Lubawka" "Rokitki" at "8:40" "pt"
 
-**Trasa kryterium przesiadek (`p`, `ap`):**
-```
-Wrocław Główny → Jelenia Góra  [D6]   15:55 → 18:10
-Jelenia Góra → Karpacz         [D62]  18:35 → 18:53
+Lubawka → Sędzisław              [D66]  09:31:00 → 09:51:00
+Sędzisław → Wałbrzych Fabryczny  [D60]  09:56:00 → 10:22:00
+Wałbrzych Fabryczny → Jaworzyna Śląska  [D60]  10:24:00 → 10:53:00
+Jaworzyna Śląska → Legnica       [D91]  10:59:00 → 11:49:00
+Legnica → Chojnów                [D1]   12:14:00 → 12:26:00
+Chojnów → Rokitki                [D14]  13:20:00 → 13:30:00
+
+Trasa:       Lubawka → Rokitki
+Przyjazd:    13:30:00
+Przesiadki:  5
+Odwiedzone węzły: 193
 ```
 
-Mimo tej samej nazwy linii D6, w trasie czasowej są to dwa różne `trip_id` — zmiana składu w Wałbrzychu liczy się jako przesiadka. Kryterium przesiadek czeka na D6 o 15:55, który jedzie jako jeden kurs aż do Jeleniej Góry.
+```
+$ python main.py "Lubawka" "Rokitki" ats "8:40" "pt"
 
-`p` (Dijkstra przesiadki) odwiedza 6175 węzłów vs 928 dla `ap` (A* przesiadki) — heurystyka binarna redukuje przeszukiwanie ~6.6×.
+(identyczna trasa)
+Odwiedzone węzły: 118
+```
+
+Obie wersje A* zwracają tę samą trasę co Dijkstra — wynik optymalny. Różnica jest w liczbie odwiedzonych węzłów: `at` redukuje o 19%, `ats` o 51%.
 
 ---
 
-### 3.4 Kłodzko Główne → Zgorzelec, odjazd 06:00
+### 3.4 Lubawka → Rokitki, A* przesiadki (`ap`)
 
-**Wyniki wyszukiwania:**
-
-| Kryterium | Odjazd | Przyjazd | Przesiadki | Linie | Węzły |
-|---|---|---|---|---|---|
-| `t` | 06:06 | 09:54 | 3 | D9, D91, D1, D10 | 238 |
-| `p` | 06:06 | 09:54 | **1** | D9, D10 | 1537 |
-| `at` | 06:06 | 09:54 | 3 | D9, D91, D1, D10 | 200 |
-| `ats` | 06:06 | 09:54 | 3 | D9, D91, D1, D10 | 109 |
-| `ap` | 06:06 | 09:54 | **1** | D9, D10 | 177 |
-
-**Trasa kryterium czasu (`t`, `at`, `ats`):**
 ```
-Kłodzko Główne → Kamieniec Ząbkowicki  [D9]   06:06 → 06:23
-Kamieniec Ząbkowicki → Legnica          [D91]  06:31 → 08:37
-Legnica → Węgliniec                     [D1]   08:43 → 09:33
-Węgliniec → Zgorzelec                   [D10]  09:38 → 09:54
+$ python main.py "Lubawka" "Rokitki" ap "8:40" "pt"
+
+Lubawka → Sędzisław        [D66]  09:31:00 → 09:51:00
+Sędzisław → Wrocław Główny [D60]  09:56:00 → 11:38:00
+Wrocław Główny → Rokitki   [D14]  13:35:00 → 14:44:00
+
+Trasa:       Lubawka → Rokitki
+Przyjazd:    14:44:00
+Przesiadki:  2
+Odwiedzone węzły: 243
 ```
 
-**Trasa kryterium przesiadek (`p`, `ap`):**
-```
-Kłodzko Główne → Wrocław Główny  [D9]   06:06 → 07:27
-Wrocław Główny → Zgorzelec       [D10]  08:21 → 09:54
-```
-
-Na dłuższych trasach różnica między kryteriami jest wyraźna — 3 przesiadki vs 1 przy identycznym czasie przyjazdu. Heurystyka `ats` redukuje węzły o 54% względem Dijkstry.
+A* przesiadki daje ten sam wynik co Dijkstra przesiadkowy (2 przesiadki), ale odwiedza 243 węzłów vs 2174 — redukcja o **89%**.
 
 ---
 
 ### 3.5 Zbiorcze porównanie odwiedzonych węzłów
 
-| Trasa | `t` | `at` | `ats` | redukcja `ats` | `p` | `ap` | redukcja `ap` |
-|---|---|---|---|---|---|---|---|
-| Wrocław → Jelenia Góra | 207 | 145 | 49 | **−76%** | 440 | 44 | **−90%** |
-| Wrocław → Legnica | 70 | 43 | 28 | **−60%** | 95 | 20 | **−79%** |
-| Wrocław → Karpacz | 267 | 250 | 144 | **−46%** | 6175 | 928 | **−85%** |
-| Kłodzko → Zgorzelec | 238 | 200 | 109 | **−54%** | 1537 | 177 | **−88%** |
+| Kryterium | Algorytm | Węzły | Redukcja | Przyjazd | Przesiadki |
+|---|---|---|---|---|---|
+| czas | Dijkstra `t` | 239 | — | 13:30 | 5 |
+| czas | A* euklid `at` | 193 | −19% | 13:30 | 5 |
+| czas | A* rev-Dijkstra `ats` | 118 | **−51%** | 13:30 | 5 |
+| przesiadki | Dijkstra `p` | 2174 | — | 14:44 | 2 |
+| przesiadki | A* `ap` | 243 | **−89%** | 14:44 | 2 |
 
-Heurystyka oparta na odwróconej Dijkstrze (`ats`) redukuje przeszukiwanie o 46–76% względem Dijkstry. Heurystyka binarna dla przesiadek (`ap`) osiąga redukcję 79–90% względem Dijkstry przesiadkowej.
+Heurystyka rev-Dijkstra (`ats`) szczególnie efektywna — prekomputowana dolna granica czasu przejazdu pozwala wcześnie odrzucić przystanki „w złym kierunku". A* przesiadkowy redukuje węzły niemal 9× dzięki binarnej heurystyce (0/1 w zależności od tego czy kurs dociera do celu).
 
 ---
 
@@ -585,7 +563,7 @@ Przeszukiwanie lokalne iteracyjnie zastępuje bieżące rozwiązanie $s$ lepszym
 
 Dla TSP z $n$ miastami sąsiedztwo **swap** zawiera $\binom{n}{2}$ kandydatów — każdą parę miast, które można ze sobą zamienić:
 
-$$N_\text{swap}(s) = \{s \text{ ze zamienionymi pozycjami } i \text{ i } j \mid 1 \leq i < j \leq n\}$$
+$$N_{\mathrm{swap}}(s) = \{s \text{ ze zamienionymi pozycjami } i \text{ i } j \mid 1 \leq i < j \leq n\}$$
 
 ### 6.3 Tabu Search
 
@@ -781,42 +759,130 @@ def tabu_search(start_name, start_ids, candidates, start_time, graph, criterion,
 
 ## 8. Wyniki
 
-### 8.1 Wrocław Główny → Legnica; Jelenia Góra, odjazd 08:30
+Testy wykonano na danych Kolei Dolnośląskich, piątek, odjazd 08:40.
 
-| Kryterium | Trasa | Odjazd | Przyjazd | Czas | Przesiadki | Czas obliczenia |
-|---|---|---|---|---|---|---|
-| `t` | Wrocław → Legnica → Jelenia Góra → Wrocław | 08:43 | 15:38 | 06:55 | 2 | 0.019s |
-| `p` | Wrocław → Legnica → Jelenia Góra → Wrocław | 08:49 | 15:38 | 06:49 | **1** | 0.018s |
+### 8.1 Lubawka → Rokitki; Wałbrzych Główny, kryterium czasu (`t`)
 
-Kryterium czasu wybiera wcześniejszy odjazd (08:43) kosztem dodatkowej przesiadki. Kryterium przesiadek czeka 6 minut na bezpośredni D1 (08:49), co daje 1 przesiadkę mniej przy identycznym czasie przyjazdu.
+```
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny" t "8:40" "pt"
 
-Dla 2 przystanków pośrednich istnieje tylko 1 możliwa kolejność odwiedzin (L→JG lub JG→L — 2 permutacje). Greedy od razu wybiera optymalną, Tabu Search nie ma nic do poprawy.
+Trasa: Lubawka → Wałbrzych Główny → Rokitki → Lubawka
+
+Odcinek 1: Lubawka → Wałbrzych Główny
+  Lubawka → Sędzisław        [D66]  09:31:00 → 09:51:00
+  Sędzisław → Wałbrzych Główny  [D60]  09:56:00 → 10:17:00
+
+Odcinek 2: Wałbrzych Główny → Rokitki
+  Wałbrzych Główny → Wałbrzych Fabryczny  [D60]  10:18:00 → 10:22:00
+  Wałbrzych Fabryczny → Jaworzyna Śląska  [D60]  10:24:00 → 10:53:00
+  Jaworzyna Śląska → Legnica  [D91]  10:59:00 → 11:49:00
+  Legnica → Chojnów           [D1]   12:14:00 → 12:26:00
+  Chojnów → Rokitki           [D14]  13:20:00 → 13:30:00
+
+Odcinek 3: Rokitki → Lubawka
+  Rokitki → Legnica           [D13]  14:24:00 → 14:52:00
+  Legnica → Jaworzyna Śląska  [D91]  15:01:00 → 15:49:00
+  Jaworzyna Śląska → Wałbrzych Szczawienko  [D60]  15:54:00 → 16:10:00
+  Wałbrzych Szczawienko → Boguszów-Gorce Wschód  [D60]  16:10:00 → 16:35:00
+  Boguszów-Gorce Wschód → Sędzisław  [D60]  16:37:00 → 16:53:00
+  Sędzisław → Lubawka         [D66]  17:15:00 → 17:35:00
+
+Odjazd:          09:31:00
+Przyjazd:        17:35:00
+Czas całkowity:  00:08:04
+Przesiadki:      10
+```
+
+Greedy wybrał Wałbrzych jako pierwszy przystanek (bliżej Lubawki), potem Rokitki. Tabu Search potwierdził że to optymalna kolejność — zamiana dałaby dłuższą trasę.
 
 ---
 
-### 8.2 Wrocław Główny → Legnica; Jelenia Góra; Karpacz, odjazd 08:30
+### 8.2 Lubawka → Rokitki; Wałbrzych Główny, kryterium przesiadek (`p`)
 
-| Kryterium | Kolejność odwiedzin | Przyjazd | Czas | Przesiadki | Czas obliczenia |
-|---|---|---|---|---|---|
-| `t` | Wrocław → **Legnica → Jelenia Góra → Karpacz** → Wrocław | 17:38 | 08:55 | 3 | 0.063s |
-| `p` | Wrocław → **Legnica → Karpacz → Jelenia Góra** → Wrocław | 06:00 (+1d) | 21:11 | **1** | 1.637s |
+```
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny" p "8:40" "pt"
 
-Dla kryterium przesiadek Tabu Search wybrał inną kolejność — Karpacz przed Jelenią Górą — dzięki czemu znalazł trasę z tylko 1 przesiadką, kosztem czasu (podróż kończy się następnego dnia o 06:00).
+Trasa: Lubawka → Wałbrzych Główny → Rokitki → Lubawka
 
-Czas obliczenia dla `p` (1.637s) jest znacznie dłuższy niż dla `t` (0.063s), bo kryterium przesiadek wymaga droższego algorytmu (`make_transfers_config`) dla każdego odcinka.
+Odcinek 1: Lubawka → Wałbrzych Główny
+  Lubawka → Sędzisław        [D66]  09:31:00 → 09:51:00
+  Sędzisław → Wałbrzych Główny  [D60]  09:56:00 → 10:17:00
+
+Odcinek 2: Wałbrzych Główny → Rokitki
+  Wałbrzych Główny → Wrocław Główny  [D60]  10:18:00 → 11:38:00
+  Wrocław Główny → Rokitki   [D14]  13:35:00 → 14:44:00
+
+Odcinek 3: Rokitki → Lubawka
+  Rokitki → Wrocław Główny   [D14]  17:52:00 → 18:56:00
+  Wrocław Główny → Sędzisław [D5/D62]  19:40:00 → 21:33:00
+  Sędzisław → Lubawka        [D66]  06:52:00 (+1d) → 07:12:00 (+1d)
+
+Odjazd:          09:31:00
+Przyjazd:        07:12:00 (+1d)
+Czas całkowity:  00:21:41
+Przesiadki:      4
+```
+
+Kryterium przesiadek wybiera inne połączenia na każdym odcinku — przez Wrocław zamiast przez Legnicę. Całkowity czas podróży wydłuża się do ponad 21 godzin (przyjazd następnego dnia), ale liczba przesiadek spada z 10 do 4.
 
 ---
 
-### 8.3 Porównanie wariantów (Wrocław → Legnica; Jelenia Góra; Karpacz, kryterium `t`)
+### 8.3 Lubawka → Rokitki; Wałbrzych Główny; Legnica, kryterium czasu (`t`)
+
+```
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt"
+
+Trasa: Lubawka → Wałbrzych Główny → Legnica → Rokitki → Lubawka
+
+Odcinek 1: Lubawka → Wałbrzych Główny
+  Lubawka → Sędzisław        [D66]  09:31:00 → 09:51:00
+  Sędzisław → Wałbrzych Główny  [D60]  09:56:00 → 10:17:00
+
+Odcinek 2: Wałbrzych Główny → Legnica
+  Wałbrzych Główny → Wałbrzych Fabryczny  [D60]  10:18:00 → 10:22:00
+  Wałbrzych Fabryczny → Jaworzyna Śląska  [D60]  10:24:00 → 10:53:00
+  Jaworzyna Śląska → Legnica  [D91]  10:59:00 → 11:49:00
+
+Odcinek 3: Legnica → Rokitki
+  Legnica → Chojnów  [D1]  12:14:00 → 12:26:00
+  Chojnów → Rokitki  [D14]  13:20:00 → 13:30:00
+
+Odcinek 4: Rokitki → Lubawka
+  Rokitki → Legnica           [D13]  14:24:00 → 14:52:00
+  Legnica → Jaworzyna Śląska  [D91]  15:01:00 → 15:49:00
+  Jaworzyna Śląska → Wałbrzych Szczawienko  [D60]  15:54:00 → 16:10:00
+  Wałbrzych Szczawienko → Boguszów-Gorce Wschód  [D60]  16:10:00 → 16:35:00
+  Boguszów-Gorce Wschód → Sędzisław  [D60]  16:37:00 → 16:53:00
+  Sędzisław → Lubawka         [D66]  17:15:00 → 17:35:00
+
+Odjazd:          09:31:00
+Przyjazd:        17:35:00
+Czas całkowity:  00:08:04
+Przesiadki:      9
+Czas obliczenia: 0.058s
+```
+
+Wejściowa kolejność listy to `Rokitki;Wałbrzych Główny;Legnica`. Greedy zamienił ją na `Wałbrzych → Legnica → Rokitki` — geograficznie logiczna trasa wzdłuż linii D60/D91. Tabu Search potwierdził optymalność tej kolejności.
+
+---
+
+### 8.4 Porównanie wariantów (Lubawka → Rokitki; Wałbrzych Główny; Legnica, kryterium `t`)
+
+```
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt"              → 17:35, 0.058s
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --tabu-size auto  → 17:35, 0.058s
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --aspiration      → 17:35, 0.061s
+$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --sample 3        → 17:35, 0.061s
+```
 
 | Wariant | Kolejność | Przyjazd | Czas obliczenia |
 |---|---|---|---|
-| (a) bazowy | Legnica → Jelenia Góra → Karpacz | 17:38 | 0.063s |
-| (b) `--tabu-size auto` | Legnica → Jelenia Góra → Karpacz | 17:38 | 0.063s |
-| (c) `--aspiration` | Legnica → Jelenia Góra → Karpacz | 17:38 | 0.061s |
-| (d) `--sample 3` | Legnica → Jelenia Góra → Karpacz | 17:38 | 0.061s |
+| (a) bazowy | Wałbrzych → Legnica → Rokitki | 17:35 | 0.058s |
+| (b) `--tabu-size auto` (\|T\|=6) | Wałbrzych → Legnica → Rokitki | 17:35 | 0.058s |
+| (c) `--aspiration` | Wałbrzych → Legnica → Rokitki | 17:35 | 0.061s |
+| (d) `--sample 3` | Wałbrzych → Legnica → Rokitki | 17:35 | 0.061s |
 
-Wszystkie warianty zwracają ten sam wynik — greedy initial solution jest już optymalna dla tej trasy. Różnice między wariantami ujawniają się przy większych listach L lub trasach z wieloma lokalnymi optimami.
+Wszystkie warianty dają identyczny wynik — greedy initial solution trafia w optimum globalne dla tej trasy. Warianty (b), (c), (d) są zaprojektowane z myślą o większych instancjach, gdzie przestrzeń rozwiązań ma więcej lokalnych optimów.
 
 ---
 
