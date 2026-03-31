@@ -115,3 +115,61 @@ def make_astar_transfers_config(
     config.heuristic = heuristic
     config.make_f = lambda cost, h: (cost[0] + h, cost[1])
     return config
+
+
+def make_astar_transfers_improved_config(
+    graph: Graph,
+    target_ids: set[StopId],
+) -> SearchConfig:
+    """
+    Kryterium: minimalizacja liczby przesiadek — algorytm A* z ulepszoną heurystyką.
+    Heurystyka: minimalna liczba przesiadek z obecnego kursu do celu,
+    obliczona przez BFS po grafie przesiadek (kursy dzielące przystanek).
+    """
+    from collections import deque
+
+    # Krok 1: graf przesiadek — dla każdego przystanku jakie kursy się tam zatrzymują
+    stop_to_trips: dict[StopId, set[str]] = defaultdict(set)
+    for conns in graph.values():
+        for conn in conns:
+            stop_to_trips[conn.from_stop_id].add(conn.trip_id)
+
+    # Krok 2: BFS od kursów docierających do celu
+    min_transfers: dict[str, int] = {}
+    queue: deque = deque()
+
+    for conns in graph.values():
+        for conn in conns:
+            if conn.to_stop_id in target_ids and conn.trip_id not in min_transfers:
+                min_transfers[conn.trip_id] = 0
+                queue.append(conn.trip_id)
+
+    while queue:
+        trip = queue.popleft()
+        d = min_transfers[trip]
+        # znajdź wszystkie przystanki na których zatrzymuje się ten kurs
+        for conns in graph.values():
+            for conn in conns:
+                if conn.trip_id != trip:
+                    continue
+                # na tym przystanku można przesiąść się z innych kursów
+                for other_trip in stop_to_trips.get(conn.from_stop_id, set()):
+                    if other_trip not in min_transfers:
+                        min_transfers[other_trip] = d + 1
+                        queue.append(other_trip)
+
+    def heuristic(state: tuple, _target_ids: set[StopId]) -> int:
+        stop_id, trip_id = state
+        if stop_id in target_ids:
+            return 0
+        if trip_id is None:
+            for conn in graph.get(stop_id, []):
+                if min_transfers.get(conn.trip_id, 1) == 0:
+                    return 0
+            return 1
+        return min_transfers.get(trip_id, 1)
+
+    config = make_transfers_config()
+    config.heuristic = heuristic
+    config.make_f = lambda cost, h: (cost[0] + h, cost[1])
+    return config

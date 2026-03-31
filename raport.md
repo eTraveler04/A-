@@ -19,6 +19,34 @@ Przesiadka modelowana jest implicitnie — pasażer czeka na przystanku do najbl
 
 Graf jest zależny od czasu — w przeciwieństwie do klasycznego grafu ważonego, koszt przejścia krawędzią zależy nie tylko od jej wagi, ale też od momentu przybycia do wierzchołka. Pasażer, który przyjedzie za późno, musi poczekać na następny kurs.
 
+**Struktura danych — przykład:**
+
+```
+# Węzły (stop_id → znormalizowane do parent_station jeśli istnieje):
+"stop_lubawka", "stop_sedzislaw", "stop_walbrzych", "stop_rokitki"
+
+# Graf sąsiedztwa: stop_id → lista krawędzi wychodzących
+graph = {
+    "stop_lubawka": [
+        Connection(trip_id="D66_1", from_stop_id="stop_lubawka",
+                   to_stop_id="stop_sedzislaw", departure_time=34260, arrival_time=35460),
+        Connection(trip_id="D66_2", from_stop_id="stop_lubawka",
+                   to_stop_id="stop_sedzislaw", departure_time=41400, arrival_time=42600),
+    ],
+    "stop_sedzislaw": [
+        Connection(trip_id="D60_1", from_stop_id="stop_sedzislaw",
+                   to_stop_id="stop_walbrzych", departure_time=35760, arrival_time=37020),
+        ...
+    ],
+    ...
+}
+
+# Jeden węzeł per stacja — wszystkie kursy w jednej liście.
+# Algorytm filtruje: conn.departure_time >= current_arrival_time
+```
+
+Czasy podawane są w sekundach od północy: `09:31:00` = $9 \times 3600 + 31 \times 60 = 34260$ s.
+
 ### 1.2 Algorytm Dijkstry
 
 Algorytm Dijkstry znajduje najkrótszą ścieżkę w grafie ważonym z nieujemnymi wagami. Operuje na kolejce priorytetowej, z której zawsze wybierany jest wierzchołek o najniższym dotychczasowym koszcie $g(v)$.
@@ -88,6 +116,23 @@ Funkcja priorytetu w kolejce:
 $$f = (g_p + h,\ g_t)$$
 
 Heurystyka dodawana jest wyłącznie do składowej przesiadkowej krotki, nie do czasu.
+
+### 1.7 A* z kryterium przesiadek — heurystyka oparta na BFS po kursach (`aps`)
+
+Heurystyka `ap` zwraca tylko 0 lub 1 — nie rozróżnia sytuacji gdy do celu potrzeba 2 lub więcej przesiadek. Lepsza heurystyka powinna szacować minimalną liczbę przesiadek dla każdego kursu.
+
+**Graf przesiadek** — dwa kursy są połączone jeśli dzielą wspólny przystanek (można się między nimi przesiąść). BFS od kursów docierających bezpośrednio do celu daje minimalną liczbę przesiadek dla każdego kursu:
+
+$$\mathrm{minTransfers}[\mathrm{trip}] = \min \text{ liczba przesiadek z kursu } \mathrm{trip} \text{ do celu}$$
+
+Prekomputacja w dwóch krokach:
+1. Dla każdego przystanku zbieramy wszystkie kursy które się tam zatrzymują (`stop_to_trips`)
+2. BFS od kursów z $\mathrm{minTransfers} = 0$ — dla każdego sąsiedniego kursu (dzielącego przystanek) ustawiamy $\mathrm{minTransfers} = d + 1$
+
+Heurystyka:
+$$h(v) = \begin{cases} 0 & \text{jeśli } \mathrm{stopId}(v) \in \mathrm{targetIds} \\ \mathrm{minTransfers}[\mathrm{tripId}(v)] & \text{jeśli } \mathrm{tripId}(v) \neq \mathrm{None} \\ \min_{c \in \mathrm{conns}(v)} \mathrm{minTransfers}[c.\mathrm{tripId}] & \text{jeśli } \mathrm{tripId}(v) = \mathrm{None} \text{ (stan startowy)} \end{cases}$$
+
+Jest dopuszczalna — `minTransfers` to dolne ograniczenie, ponieważ ignoruje czasy rozkładu (zakłada że zawsze można się przesiąść).
 
 ---
 
@@ -376,6 +421,61 @@ def make_astar_transfers_config(graph: Graph, target_ids: set[StopId]) -> Search
 
 ---
 
+**Fragment 7b — A* z kryterium przesiadek, heurystyka BFS po kursach (`aps`)**
+
+```python
+def make_astar_transfers_improved_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
+    # Krok 1: dla każdego przystanku — które kursy się tam zatrzymują
+    stop_to_trips: dict[StopId, set[str]] = defaultdict(set)
+    for conns in graph.values():
+        for conn in conns:
+            stop_to_trips[conn.from_stop_id].add(conn.trip_id)        # (1)
+
+    # Krok 2: BFS od kursów docierających bezpośrednio do celu
+    min_transfers: dict[str, int] = {}
+    queue: deque = deque()
+    for conns in graph.values():
+        for conn in conns:
+            if conn.to_stop_id in target_ids and conn.trip_id not in min_transfers:
+                min_transfers[conn.trip_id] = 0                        # (2)
+                queue.append(conn.trip_id)
+
+    while queue:
+        trip = queue.popleft()
+        d = min_transfers[trip]
+        for conns in graph.values():
+            for conn in conns:
+                if conn.trip_id != trip:
+                    continue
+                for other_trip in stop_to_trips.get(conn.from_stop_id, set()):
+                    if other_trip not in min_transfers:
+                        min_transfers[other_trip] = d + 1              # (3)
+                        queue.append(other_trip)
+
+    def heuristic(state: tuple, _target_ids: set[StopId]) -> int:
+        stop_id, trip_id = state
+        if stop_id in target_ids:
+            return 0
+        if trip_id is None:                                            # (4)
+            for conn in graph.get(stop_id, []):
+                if min_transfers.get(conn.trip_id, 1) == 0:
+                    return 0
+            return 1
+        return min_transfers.get(trip_id, 1)
+
+    config = make_transfers_config()
+    config.heuristic = heuristic
+    config.make_f = lambda cost, h: (cost[0] + h, cost[1])
+    return config
+```
+
+- **(1)** Budowanie odwróconego indeksu: przystanek → zbiór kursów. Potrzebny do znajdowania kursów z którymi można się przesiąść.
+- **(2)** Inicjalizacja BFS — kursy docierające bezpośrednio do celu mają 0 przesiadek.
+- **(3)** Relaksacja BFS — kurs sąsiedni (dzielący przystanek) potrzebuje o 1 przesiadkę więcej.
+- **(4)** Stan startowy ma `trip_id = None` — sprawdzamy czy z przystanku odjeżdża bezpośredni kurs do celu. Bez tej korekty heurystyka zwracałaby 1 nawet gdy istnieje połączenie bezpośrednie, co byłoby przeszacowaniem.
+
+---
+
 **Fragment 8 — wspólny algorytm wyszukiwania**
 
 ```python
@@ -508,7 +608,7 @@ Obie wersje A* zwracają tę samą trasę co Dijkstra — wynik optymalny. Róż
 
 ---
 
-### 3.4 Lubawka → Rokitki, A* przesiadki (`ap`)
+### 3.4 Lubawka → Rokitki, A* przesiadki (`ap`) i BFS po kursach (`aps`)
 
 ```
 $ python main.py "Lubawka" "Rokitki" ap "8:40" "pt"
@@ -523,11 +623,34 @@ Przesiadki:  2
 Odwiedzone węzły: 243
 ```
 
-A* przesiadki daje ten sam wynik co Dijkstra przesiadkowy (2 przesiadki), ale odwiedza 243 węzłów vs 2174 — redukcja o **89%**.
+```
+$ python main.py "Lubawka" "Rokitki" aps "8:40" "pt"
+
+(identyczna trasa)
+Odwiedzone węzły: 523
+```
+
+A* `ap` redukuje węzły o **89%** względem Dijkstry przesiadkowego. `aps` daje wynik identyczny, ale odwiedza więcej węzłów (523 vs 243) — dla trasy wymagającej 2 przesiadek dokładniejsza heurystyka nie pomaga, bo większość kursów ma `min_transfers = 1`, co daje te same wartości co binarna heurystyka `ap`.
 
 ---
 
-### 3.5 Zbiorcze porównanie odwiedzonych węzłów
+### 3.5 Wrocław Główny → Karpacz 15:20, A* przesiadki (`ap` vs `aps`)
+
+```
+$ python main.py "Wrocław Główny" "Karpacz" ap "15:20" "pon"
+Przesiadki:  1
+Odwiedzone węzły: 786
+
+$ python main.py "Wrocław Główny" "Karpacz" aps "15:20" "pon"
+Przesiadki:  1
+Odwiedzone węzły: 50
+```
+
+Dla dłuższej trasy (Wrocław → Karpacz) `aps` odwiedza **16× mniej węzłów** niż `ap`. Różnica wynika z topologii sieci — wiele kursów ma `min_transfers = 0` (docierają do Karpacza bezpośrednio przez linię D62), co pozwala heurystyce wcześnie odrzucić kursy idące w złą stronę.
+
+---
+
+### 3.6 Zbiorcze porównanie odwiedzonych węzłów
 
 | Kryterium | Algorytm | Węzły | Redukcja | Przyjazd | Przesiadki |
 |---|---|---|---|---|---|
@@ -536,8 +659,10 @@ A* przesiadki daje ten sam wynik co Dijkstra przesiadkowy (2 przesiadki), ale od
 | czas | A* rev-Dijkstra `ats` | 118 | **−51%** | 13:30 | 5 |
 | przesiadki | Dijkstra `p` | 2174 | — | 14:44 | 2 |
 | przesiadki | A* `ap` | 243 | **−89%** | 14:44 | 2 |
+| przesiadki | A* BFS-kursy `aps` (Lubawka→Rokitki) | 523 | −76% | 14:44 | 2 |
+| przesiadki | A* BFS-kursy `aps` (Wrocław→Karpacz) | 50 | **−94%** vs `ap` | — | 1 |
 
-Heurystyka rev-Dijkstra (`ats`) szczególnie efektywna — prekomputowana dolna granica czasu przejazdu pozwala wcześnie odrzucić przystanki „w złym kierunku". A* przesiadkowy redukuje węzły niemal 9× dzięki binarnej heurystyce (0/1 w zależności od tego czy kurs dociera do celu).
+Skuteczność `aps` zależy od topologii sieci. Dla tras gdzie wiele kursów ma `min_transfers > 1` (sieć rzadka, daleka trasa) — przewaga duża. Dla tras gdzie większość kursów ma `min_transfers = 1` — heurystyki `ap` i `aps` dają podobne wartości i różnica zanika.
 
 ---
 
@@ -917,3 +1042,41 @@ Implementacja nie wymaga żadnych zewnętrznych zależności poza `folium` (wizu
 **Duplikaty w liście L (Zadanie 2)** — użytkownik mógł podać ten sam przystanek wielokrotnie lub uwzględnić przystanek startowy w liście L. Powodowało to odcinek `X → X` z kosztem 0 i pustą trasą. Rozwiązanie: deduplikacja listy przed uruchomieniem algorytmu z zachowaniem kolejności, usunięcie przystanku startowego z listy.
 
 **Time-dependent TSP (Zadanie 2)** — w klasycznym TSP macierz kosztów jest stała. Tu koszt odcinka i→j zależy od czasu przyjazdu do i, który zależy od całej dotychczasowej trasy. Uniemożliwia to prekomputację macierzy. Rozwiązanie: sekwencyjne wywołania `search()` przy każdej ocenie trasy, z propagacją czasów przyjazdu.
+
+---
+
+## 6. Wnioski i ograniczenia
+
+### 6.1 Skalowalność na większe sieci
+
+Koleje Dolnośląskie to stosunkowo mała sieć (~200 stacji, kilkadziesiąt linii). Przy skalowaniu do sieci ogólnopolskiej (PKP: ~2500 stacji) lub europejskiej pojawiłyby się następujące problemy:
+
+**Rozmiar grafu w pamięci** — aktualnie cały graf ładowany jest do pamięci RAM jako `dict[StopId, list[Connection]]`. Dla sieci ogólnopolskiej liczba krawędzi rośnie liniowo z liczbą kursów i przystanków — przy kilku milionach połączeń dziennie może to przekroczyć dostępną pamięć. Rozwiązanie: leniwe ładowanie danych z bazy (np. SQLite), buforowanie tylko aktywnych tras.
+
+**Prekomputacja heurystyk** — `ats` (odwrócona Dijkstra) i `aps` (BFS po kursach) wykonują preprocessing na całym grafie przed każdym zapytaniem. Dla dużych sieci czas prekomputacji może przewyższyć czas samego wyszukiwania. Rozwiązanie: cache prekomputowanych heurystyk per stacja docelowa.
+
+**Wyszukiwanie przystanków po nazwie** — `load_stops_by_name()` zwraca wszystkie `stop_id` dla danej nazwy. W dużych sieciach z wieloma przystankami o podobnych nazwach liczba `source_ids` i `target_ids` może rosnąć, co spowalnia inicjalizację kolejki.
+
+### 6.2 Często zmieniające się dane
+
+Obecna implementacja wczytuje dane GTFS z plików statycznych przy każdym uruchomieniu. W rzeczywistych systemach rozkłady zmieniają się dynamicznie (opóźnienia, odwołania kursów):
+
+**Brak obsługi opóźnień** — GTFS-RT (Real-Time) to rozszerzenie standardu GTFS o aktualizacje w czasie rzeczywistym. Obecny kod nie obsługuje tego formatu — operuje wyłącznie na danych statycznych. Kurs opóźniony o 20 minut zostanie zaplanowany zgodnie z rozkładem, co może uniemożliwić przesiadkę.
+
+**Invalidacja heurystyk** — heurystyki `ats` i `aps` są prekomputowane na podstawie aktualnego grafu. Przy zmianie rozkładu (np. odwołanie kursu) heurystyka może przestać być dopuszczalna jeśli kurs który stanowił "dolną granicę" został usunięty. Wymagałoby to ponownego przeliczenia.
+
+**Wczytywanie przy starcie** — aktualnie `load_connections()` parsuje pliki CSV przy każdym zapytaniu. Przy częstych zmianach lepszym podejściem byłoby trzymanie grafu w pamięci i aktualizowanie tylko zmienionych kursów.
+
+### 6.3 Ograniczenia modelu
+
+**Brak czasu przesiadki** — model zakłada że przesiadka zajmuje 0 sekund: pasażer może wysiąść z kursu o `arrival_time = T` i natychmiast wsiąść do kursu z `departure_time = T`. W rzeczywistości przejście między peronami zajmuje czas (szczególnie na dużych stacjach). Rozwiązanie: dodanie minimalnego czasu przesiadki jako parametru, modyfikacja warunku `conn.departure_time >= cost` na `conn.departure_time >= cost + min_transfer_time`.
+
+**Brak ceny biletu** — optymalizacja uwzględnia tylko czas i liczbę przesiadek. Dodanie kosztu biletu jako kryterium wymagałoby nowej `SearchConfig` z kosztem jako krotką `(cena, czas)` lub `(cena, przesiadki)`.
+
+**Heurystyka `aps` dla 2+ przesiadek** — testy pokazują że `aps` jest bardziej efektywna niż `ap` dla tras z 1 przesiadką (Wrocław→Karpacz: 16× redukcja węzłów), ale dla tras z 2 przesiadkami odwraca się (Lubawka→Rokitki: 523 vs 243).
+
+Przyczyna: wszystkie kursy odjeżdżające z Lubawki mają `min_transfers ∈ {2, 3}`. Po wejściu na pierwszy kurs:
+- `ap`: `h=1`, `f=(0+1)=1`
+- `aps`: `h=2`, `f=(0+2)=2`
+
+`ap` utrzymuje `f=1` przez pierwsze dwa kroki — po pierwszej przesiadce kurs bezpośredni do celu daje `f=(1+0)=1`, więc algorytm "przepływa" przez obie przesiadki przy niskim priorytecie, nie rywalizując z innymi stanami. `aps` podnosi `f` do 2 już po pierwszym kroku, przez co cel (również `f=2`) rywalizuje w kolejce z setkami innych stanów o tym samym priorytecie. Im więcej stanów o `f=2` tym więcej węzłów odwiedzonych zanim cel zostanie wyciągnięty z heapa.

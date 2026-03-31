@@ -27,7 +27,7 @@ from gtfs_loader import (
     time_to_seconds,
 )
 from dijkstra import search, make_time_config, make_transfers_config, print_result
-from configs import make_astar_transfers_config, make_astar_time_config, make_astar_time_improved_config
+from configs import make_astar_transfers_config, make_astar_time_config, make_astar_time_improved_config, make_astar_transfers_improved_config
 from visualize import visualize
 from utils import parse_day
 
@@ -76,7 +76,9 @@ def main() -> None:
 
     graph: Graph = build_graph(connections)
 
-    if criterion == "ap":
+    if criterion == "aps":
+        config = make_astar_transfers_improved_config(graph, target_ids)
+    elif criterion == "ap":
         config = make_astar_transfers_config(graph, target_ids)
     elif criterion == "p":
         config = make_transfers_config()
