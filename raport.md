@@ -1079,4 +1079,6 @@ Przyczyna: wszystkie kursy odjeżdżające z Lubawki mają `min_transfers ∈ {2
 - `ap`: `h=1`, `f=(0+1)=1`
 - `aps`: `h=2`, `f=(0+2)=2`
 
-`ap` utrzymuje `f=1` przez pierwsze dwa kroki — po pierwszej przesiadce kurs bezpośredni do celu daje `f=(1+0)=1`, więc algorytm "przepływa" przez obie przesiadki przy niskim priorytecie, nie rywalizując z innymi stanami. `aps` podnosi `f` do 2 już po pierwszym kroku, przez co cel (również `f=2`) rywalizuje w kolejce z setkami innych stanów o tym samym priorytecie. Im więcej stanów o `f=2` tym więcej węzłów odwiedzonych zanim cel zostanie wyciągnięty z heapa.
+`ap` utrzymuje `f=1` przez pierwsze dwa kroki — po pierwszej przesiadce kurs bezpośredni do celu daje `f=(1+0)=1`, więc algorytm "przepływa" przez obie przesiadki przy niskim `f`, nie rywalizując z dużą warstwą stanów. `aps` osiąga `f=2` od razu po pierwszym kroku — ale to samo `f=2` mają też wszystkie stany osiągalne po jednej przesiadce na kursach z `min_transfers=1` (648 kursów × wiele przystanków). A* musi przetworzyć całą tę warstwę zanim wyciągnie cel.
+
+Próba naprawy przez **tie-breaking** (preferowanie stanów z wyższym `g` przy tym samym `f`) nie pomogła — zmienia kolejność wewnątrz warstwy `f=2`, ale nie zmniejsza jej rozmiaru. `aps` jest efektywna gdy sieć ma dużo kursów z `min_transfers=0` (heurystyka skutecznie odcina przestrzeń). Gdy wszystkie kursy ze startu mają `min_transfers≥2`, tighter heurystyka paradoksalnie tworzy grubszą warstwę optymalnego `f` i eksploruje więcej węzłów.
