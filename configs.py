@@ -5,8 +5,49 @@ import heapq
 import math
 from collections import defaultdict
 
-from models import Connection, Graph, Seconds, StopId
-from dijkstra import SearchConfig, make_time_config, make_transfers_config
+from models import Connection, Graph, SearchConfig, Seconds, StopId
+
+
+def make_time_config() -> SearchConfig:
+    """Kryterium: minimalizacja czasu przybycia. Stan = stop_id."""
+    return SearchConfig(
+        initial_states=lambda source_ids, t: [(t, sid) for sid in source_ids],
+        expand=lambda state, cost, graph: [
+            (conn.arrival_time, conn.to_stop_id, conn)
+            for conn in graph.get(state, [])
+            if conn.departure_time >= cost
+        ],
+        is_goal=lambda state, target_ids: state in target_ids,
+        get_stop_id=lambda state: state,
+        get_arrival_time=lambda cost: cost,
+    )
+
+
+def make_transfers_config() -> SearchConfig:
+    """
+    Kryterium: minimalizacja liczby przesiadek. Stan = (stop_id, trip_id).
+    Koszt = (liczba_przesiadek, czas_przybycia) — leksykograficznie:
+    najpierw minimalizuj przesiadki, przy remisie minimalizuj czas.
+    """
+    def expand(state: tuple, cost: tuple, graph: Graph) -> list:
+        stop_id, current_trip = state
+        num_transfers, current_time = cost
+        result = []
+        for conn in graph.get(stop_id, []):
+            if conn.departure_time < current_time:
+                continue
+            is_transfer = current_trip is not None and conn.trip_id != current_trip
+            new_cost = (num_transfers + (1 if is_transfer else 0), conn.arrival_time)
+            result.append((new_cost, (conn.to_stop_id, conn.trip_id), conn))
+        return result
+
+    return SearchConfig(
+        initial_states=lambda source_ids, t: [((0, t), (sid, None)) for sid in source_ids],
+        expand=expand,
+        is_goal=lambda state, target_ids: state[0] in target_ids,
+        get_stop_id=lambda state: state[0],
+        get_arrival_time=lambda cost: cost[1],
+    )
 
 
 def make_astar_time_config(
@@ -22,7 +63,7 @@ def make_astar_time_config(
         coords[sid] for sid in target_ids if sid in coords
     ]
 
-    def heuristic(state: StopId, _target_ids: set[StopId]) -> Seconds:
+    def heuristic(state: StopId) -> Seconds:
         if state not in coords or not target_coords:
             return 0
         lat1, lon1 = coords[state]
@@ -80,7 +121,7 @@ def make_astar_time_improved_config(
                 dist[u] = nd
                 heapq.heappush(queue, (nd, u))
 
-    def heuristic(state: StopId, _target_ids: set[StopId]) -> Seconds:
+    def heuristic(state: StopId) -> Seconds:
         # Zwraca 0 jeśli brak danych — bezpieczne (heurystyka trywialna)
         return dist.get(state, 0)
 
@@ -103,7 +144,7 @@ def make_astar_transfers_config(
             if conn.to_stop_id in target_ids:
                 trips_to_target.add(conn.trip_id)
 
-    def heuristic(state: tuple, _target_ids: set[StopId]) -> int:
+    def heuristic(state: tuple) -> int:
         stop_id, trip_id = state
         if stop_id in target_ids:
             return 0
@@ -158,7 +199,7 @@ def make_astar_transfers_improved_config(
                         min_transfers[other_trip] = d + 1
                         queue.append(other_trip)
 
-    def heuristic(state: tuple, _target_ids: set[StopId]) -> int:
+    def heuristic(state: tuple) -> int:
         stop_id, trip_id = state
         if stop_id in target_ids:
             return 0

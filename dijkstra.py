@@ -4,86 +4,20 @@ Algorytm Dijkstry dla transportu publicznego.
 import heapq
 import itertools
 import sys
-from dataclasses import dataclass
 from itertools import groupby
-from typing import Any, Callable
 
 from models import (
     Connection,
+    Cost,
     Graph,
     PathResult,
+    SearchConfig,
     Seconds,
+    State,
     StopId,
     StopName,
 )
 from gtfs_loader import seconds_to_time
-
-# State i Cost to dowolne porównywalne typy — konkretne znaczenie zależy od SearchConfig
-State = Any
-Cost = Any
-
-
-@dataclass
-class SearchConfig:
-    """
-    Konfiguracja wyszukiwania — definiuje kryterium optymalizacji.
-
-    initial_states  -- (source_ids, departure_time) -> [(cost, state), ...]
-    expand          -- (state, cost, graph) -> [(new_cost, new_state, conn), ...]
-    is_goal         -- (state, target_ids) -> bool
-    get_stop_id     -- state -> StopId
-    get_arrival_time-- cost -> Seconds  (do PathResult)
-    """
-    initial_states: Callable[[set[StopId], Seconds], list[tuple[Cost, State]]]
-    expand: Callable[[State, Cost, Graph], list[tuple[Cost, State, Connection]]]
-    is_goal: Callable[[State, set[StopId]], bool]
-    get_stop_id: Callable[[State], StopId]
-    get_arrival_time: Callable[[Cost], Seconds]
-    heuristic: Callable[[State, set[StopId]], Any] | None = None
-    make_f: Callable[[Cost, Any], Any] | None = None
-    on_visit: Callable[[int, State, Cost], None] | None = None
-
-
-def make_time_config() -> SearchConfig:
-    """Kryterium: minimalizacja czasu przybycia. Stan = stop_id."""
-    return SearchConfig(
-        initial_states=lambda source_ids, t: [(t, sid) for sid in source_ids],
-        expand=lambda state, cost, graph: [
-            (conn.arrival_time, conn.to_stop_id, conn)
-            for conn in graph.get(state, [])
-            if conn.departure_time >= cost
-        ],
-        is_goal=lambda state, target_ids: state in target_ids,
-        get_stop_id=lambda state: state,
-        get_arrival_time=lambda cost: cost,
-    )
-
-
-def make_transfers_config() -> SearchConfig:
-    """
-    Kryterium: minimalizacja liczby przesiadek. Stan = (stop_id, trip_id).
-    Koszt = (liczba_przesiadek, czas_przybycia) — leksykograficznie:
-    najpierw minimalizuj przesiadki, przy remisie minimalizuj czas.
-    """
-    def expand(state: tuple, cost: tuple, graph: Graph) -> list:
-        stop_id, current_trip = state
-        num_transfers, current_time = cost
-        result = []
-        for conn in graph.get(stop_id, []):
-            if conn.departure_time < current_time:
-                continue
-            is_transfer = current_trip is not None and conn.trip_id != current_trip
-            new_cost = (num_transfers + (1 if is_transfer else 0), conn.arrival_time)
-            result.append((new_cost, (conn.to_stop_id, conn.trip_id), conn))
-        return result
-
-    return SearchConfig(
-        initial_states=lambda source_ids, t: [((0, t), (sid, None)) for sid in source_ids],
-        expand=expand,
-        is_goal=lambda state, target_ids: state[0] in target_ids,
-        get_stop_id=lambda state: state[0],
-        get_arrival_time=lambda cost: cost[1],
-    )
 
 
 def search(
@@ -111,7 +45,7 @@ def search(
         best_cost[state] = cost
         prev[state] = None
         if h:
-            h_val = h(state, target_ids)
+            h_val = h(state)
             f = config.make_f(cost, h_val) if config.make_f else cost + h_val
         else:
             f = cost
@@ -136,7 +70,7 @@ def search(
                 best_cost[new_state] = new_cost
                 prev[new_state] = (current_state, conn)
                 if h:
-                    h_val = h(new_state, target_ids)
+                    h_val = h(new_state)
                     new_f = config.make_f(new_cost, h_val) if config.make_f else new_cost + h_val
                 else:
                     new_f = new_cost
