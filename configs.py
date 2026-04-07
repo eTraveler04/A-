@@ -50,7 +50,7 @@ def make_transfers_config() -> SearchConfig:
     )
 
 
-def make_astar_time_config(
+def make_astar_time_euclidean_config(
     coords: dict[StopId, tuple[float, float]],
     target_ids: set[StopId],
     max_speed_ms: float = 44.4,  # ~160 km/h — górna granica prędkości, heurystyka dopuszczalna
@@ -81,7 +81,7 @@ def make_astar_time_config(
     return config
 
 
-def make_astar_time_improved_config(
+def make_astar_time_reverse_dijkstra_config(
     graph: Graph,
     target_ids: set[StopId],
 ) -> SearchConfig:
@@ -130,7 +130,7 @@ def make_astar_time_improved_config(
     return config
 
 
-def make_astar_transfers_config(
+def make_astar_transfers_direct_trip_config(
     graph: Graph,
     target_ids: set[StopId],
 ) -> SearchConfig:
@@ -158,7 +158,7 @@ def make_astar_transfers_config(
     return config
 
 
-def make_astar_transfers_improved_config(
+def make_astar_transfers_bfs_config(
     graph: Graph,
     target_ids: set[StopId],
 ) -> SearchConfig:

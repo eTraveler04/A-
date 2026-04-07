@@ -34,10 +34,10 @@ from dijkstra import search
 from configs import (
     make_time_config,
     make_transfers_config,
-    make_astar_time_config,
-    make_astar_time_improved_config,
-    make_astar_transfers_config,
-    make_astar_transfers_improved_config,
+    make_astar_time_euclidean_config,
+    make_astar_time_reverse_dijkstra_config,
+    make_astar_transfers_direct_trip_config,
+    make_astar_transfers_bfs_config,
 )
 from visualize import visualize
 from utils import parse_day
@@ -142,15 +142,15 @@ def main() -> None:
     graph: Graph = build_graph(connections)
 
     if criterion == "aps":
-        config = make_astar_transfers_improved_config(graph, target_ids)
+        config = make_astar_transfers_bfs_config(graph, target_ids)
     elif criterion == "ap":
-        config = make_astar_transfers_config(graph, target_ids)
+        config = make_astar_transfers_direct_trip_config(graph, target_ids)
     elif criterion == "p":
         config = make_transfers_config()
     elif criterion == "at":
-        config = make_astar_time_config(coords, target_ids)
+        config = make_astar_time_euclidean_config(coords, target_ids)
     elif criterion == "ats":
-        config = make_astar_time_improved_config(graph, target_ids)
+        config = make_astar_time_reverse_dijkstra_config(graph, target_ids)
     else:
         config = make_time_config()
 
