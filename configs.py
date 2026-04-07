@@ -5,7 +5,7 @@ import heapq
 import math
 from collections import defaultdict
 
-from models import Connection, Graph, SearchConfig, Seconds, StopId
+from models import Connection, Graph, SearchConfig, Seconds, StopId, TripId
 
 
 def make_time_config() -> SearchConfig:
@@ -176,7 +176,7 @@ def make_astar_transfers_bfs_config(
             stop_to_trips[conn.from_stop_id].add(conn.trip_id)
 
     # Krok 2: BFS od kursów docierających do celu
-    min_transfers: dict[str, int] = {}
+    min_transfers: dict[TripId, int] = {}
     queue: deque = deque()
 
     for conns in graph.values():

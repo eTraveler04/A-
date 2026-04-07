@@ -225,7 +225,7 @@ def load_connections(active_trip_ids: set[TripId], time_offset: Seconds = 0) -> 
 
 ### 2.2 Wzorzec SearchConfig — wspólny algorytm dla wszystkich kryteriów
 
-Zamiast implementować osobno Dijkstrę i A*, zastosowano wzorzec konfiguracji. `SearchConfig` definiuje kryterium optymalizacji jako zestaw funkcji, a właściwy algorytm (`search`) jest wspólny dla wszystkich wariantów.
+Zamiast implementować osobno Dijkstrę i A*, zastosowano wzorzec konfiguracji. `SearchConfig` (zdefiniowany w `models.py`) definiuje kryterium optymalizacji jako zestaw funkcji, a właściwy algorytm (`search` w `dijkstra.py`) jest wspólny dla wszystkich wariantów. Wszystkie fabryki konfiguracji (`make_time_config`, `make_transfers_config` i warianty A*) zgrupowane są w `configs.py`.
 
 ```python
 @dataclass
@@ -235,7 +235,7 @@ class SearchConfig:
     is_goal:        Callable[[State, set[StopId]], bool]   # (3)
     get_stop_id:    Callable[[State], StopId]              # (4)
     get_arrival_time: Callable[[Cost], Seconds]            # (5)
-    heuristic: Callable[[State, set[StopId]], Any] | None = None  # (6)
+    heuristic: Callable[[State], Any] | None = None  # (6)
     make_f:    Callable[[Cost, Any], Any] | None = None           # (7)
     on_visit:  Callable[[int, State, Cost], None] | None = None   # (8)
 ```
@@ -309,10 +309,10 @@ def make_transfers_config() -> SearchConfig:
 **Fragment 5 — A* z kryterium czasu, heurystyka euklidesowa (`at`)**
 
 ```python
-def make_astar_time_config(coords, target_ids, max_speed_ms=44.4) -> SearchConfig:
+def make_astar_time_euclidean_config(coords, target_ids, max_speed_ms=44.4) -> SearchConfig:
     target_coords = [coords[sid] for sid in target_ids if sid in coords]  # (1)
 
-    def heuristic(state: StopId, _target_ids) -> Seconds:
+    def heuristic(state: StopId) -> Seconds:
         if state not in coords or not target_coords:
             return 0                                   # (2)
         lat1, lon1 = coords[state]
@@ -340,7 +340,7 @@ def make_astar_time_config(coords, target_ids, max_speed_ms=44.4) -> SearchConfi
 **Fragment 6 — A* z kryterium czasu, heurystyka oparta na odwróconej Dijkstrze (`ats`)**
 
 ```python
-def make_astar_time_improved_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
+def make_astar_time_reverse_dijkstra_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
     # Krok 1: minimalne czasy przejazdu między przystankami
     min_travel: dict[tuple[StopId, StopId], int] = {}
     for conns in graph.values():
@@ -372,7 +372,7 @@ def make_astar_time_improved_config(graph: Graph, target_ids: set[StopId]) -> Se
                 dist[u] = nd
                 heapq.heappush(queue, (nd, u))                # (4)
 
-    def heuristic(state: StopId, _target_ids) -> Seconds:
+    def heuristic(state: StopId) -> Seconds:
         return dist.get(state, 0)                             # (5)
 
     config = make_time_config()
@@ -391,7 +391,7 @@ def make_astar_time_improved_config(graph: Graph, target_ids: set[StopId]) -> Se
 **Fragment 7 — A* z kryterium przesiadek (`ap`)**
 
 ```python
-def make_astar_transfers_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
+def make_astar_transfers_direct_trip_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
     # Prekomputacja: które kursy docierają do stacji docelowej?
     trips_to_target: set[str] = set()
     for conns in graph.values():
@@ -399,7 +399,7 @@ def make_astar_transfers_config(graph: Graph, target_ids: set[StopId]) -> Search
             if conn.to_stop_id in target_ids:
                 trips_to_target.add(conn.trip_id)             # (1)
 
-    def heuristic(state: tuple, _target_ids) -> int:
+    def heuristic(state: tuple) -> int:
         stop_id, trip_id = state
         if stop_id in target_ids:
             return 0                                           # (2)
@@ -424,7 +424,7 @@ def make_astar_transfers_config(graph: Graph, target_ids: set[StopId]) -> Search
 **Fragment 7b — A* z kryterium przesiadek, heurystyka BFS po kursach (`aps`)**
 
 ```python
-def make_astar_transfers_improved_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
+def make_astar_transfers_bfs_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
     # Krok 1: dla każdego przystanku — które kursy się tam zatrzymują
     stop_to_trips: dict[StopId, set[str]] = defaultdict(set)
     for conns in graph.values():
@@ -452,7 +452,7 @@ def make_astar_transfers_improved_config(graph: Graph, target_ids: set[StopId]) 
                         min_transfers[other_trip] = d + 1              # (3)
                         queue.append(other_trip)
 
-    def heuristic(state: tuple, _target_ids: set[StopId]) -> int:
+    def heuristic(state: tuple) -> int:
         stop_id, trip_id = state
         if stop_id in target_ids:
             return 0
@@ -491,7 +491,7 @@ def search(graph, source_ids, target_ids, departure_time, config):
         best_cost[state] = cost
         prev[state] = None
         if h:
-            h_val = h(state, target_ids)
+            h_val = h(state)
             f = config.make_f(cost, h_val) if config.make_f else cost + h_val
         else:
             f = cost                                           # (2)
@@ -509,13 +509,13 @@ def search(graph, source_ids, target_ids, departure_time, config):
         for new_cost, new_state, conn in config.expand(current_state, current_cost, graph):
             if new_state not in best_cost or new_cost < best_cost[new_state]:
                 best_cost[new_state] = new_cost
-                prev[new_state] = (current_state, conn)
+                prev[new_state] = (current_state, conn)        # (5)
                 if h:
-                    h_val = h(new_state, target_ids)
+                    h_val = h(new_state)
                     new_f = config.make_f(new_cost, h_val) if config.make_f else new_cost + h_val
                 else:
                     new_f = new_cost
-                heapq.heappush(queue, (new_f, next(counter), new_cost, new_state))  # (5)
+                heapq.heappush(queue, (new_f, next(counter), new_cost, new_state))
 
     return None, step
 ```
