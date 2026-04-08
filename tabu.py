@@ -11,7 +11,8 @@ import random
 from collections import deque
 
 from models import StopId, StopName
-from dijkstra import search, make_time_config, make_transfers_config
+from dijkstra import search
+from configs import make_time_config, make_transfers_config
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +145,6 @@ def tabu_search(
     cur_cost, cur_results = evaluate_tour(cur_ids, start_time, graph, criterion)
 
     best_names   = cur_names[:]
-    best_ids     = cur_ids[:]
     best_cost    = cur_cost
     best_results = cur_results
 
@@ -216,7 +216,6 @@ def tabu_search(
         if cur_cost < best_cost:
             best_cost    = cur_cost
             best_names   = cur_names[:]
-            best_ids     = cur_ids[:]
             best_results = cur_results
 
     return best_names, best_cost, best_results
