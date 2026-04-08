@@ -565,10 +565,11 @@ Przyjazd:    14:44:00
 Czas:        00:05:13
 Przesiadki:  2
 Linie:       ['D66', 'D60', 'D14']
-Odwiedzone węzły: 2174
+Odwiedzone węzły: 2170
+Czas obliczenia: 0.052s
 ```
 
-Kryterium przesiadek wybiera trasę przez Wrocław — 2 przesiadki zamiast 5, kosztem 1h 14min dłuższej podróży. Algorytm odwiedza 2174 węzłów (vs 239 dla `t`) — kryterium przesiadkowe przeszukuje znacznie więcej przestrzeni.
+Kryterium przesiadek wybiera trasę przez Wrocław — 2 przesiadki zamiast 5, kosztem 1h 14min dłuższej podróży. Algorytm odwiedza 2170 węzłów (vs 239 dla `t`) — kryterium przesiadkowe przeszukuje znacznie więcej przestrzeni, bo stan to `(stop_id, trip_id)` zamiast samego `stop_id`.
 
 ---
 
@@ -584,20 +585,21 @@ Jaworzyna Śląska → Legnica       [D91]  10:59:00 → 11:49:00
 Legnica → Chojnów                [D1]   12:14:00 → 12:26:00
 Chojnów → Rokitki                [D14]  13:20:00 → 13:30:00
 
-Trasa:       Lubawka → Rokitki
 Przyjazd:    13:30:00
 Przesiadki:  5
-Odwiedzone węzły: 193
+Odwiedzone węzły: 190
+Czas obliczenia: 0.003s
 ```
 
 ```
 $ python main.py "Lubawka" "Rokitki" ats "8:40" "pt"
 
 (identyczna trasa)
-Odwiedzone węzły: 118
+Odwiedzone węzły: 112
+Czas obliczenia: 0.002s
 ```
 
-Obie wersje A* zwracają tę samą trasę co Dijkstra — wynik optymalny. Różnica jest w liczbie odwiedzonych węzłów: `at` redukuje o 19%, `ats` o 51%.
+Obie wersje A* zwracają tę samą trasę co Dijkstra — wynik optymalny. Różnica jest w liczbie odwiedzonych węzłów: `at` redukuje o 21%, `ats` o 53%.
 
 ---
 
@@ -610,20 +612,21 @@ Lubawka → Sędzisław        [D66]  09:31:00 → 09:51:00
 Sędzisław → Wrocław Główny [D60]  09:56:00 → 11:38:00
 Wrocław Główny → Rokitki   [D14]  13:35:00 → 14:44:00
 
-Trasa:       Lubawka → Rokitki
 Przyjazd:    14:44:00
 Przesiadki:  2
-Odwiedzone węzły: 243
+Odwiedzone węzły: 242
+Czas obliczenia: 0.008s
 ```
 
 ```
 $ python main.py "Lubawka" "Rokitki" aps "8:40" "pt"
 
 (identyczna trasa)
-Odwiedzone węzły: 523
+Odwiedzone węzły: 527
+Czas obliczenia: 0.011s
 ```
 
-A* `ap` redukuje węzły o **89%** względem Dijkstry przesiadkowego. `aps` daje wynik identyczny, ale odwiedza więcej węzłów (523 vs 243).
+A* `ap` redukuje węzły o **89%** względem Dijkstry przesiadkowego. `aps` daje wynik identyczny, ale odwiedza więcej węzłów (527 vs 242).
 
 Analiza logów (`--verbose`) ujawnia przyczynę: BFS w `aps` przypisał kursom jadącym w stronę Czech (Kralovec, Trutnov) `min_transfers=2`, a kluczowemu przystankowi Sędzisław `min_transfers=3`. Ponieważ `f = (przesiadki_g + h, czas)`, kierunek czeski dostaje `f=(2,...)` a Sędzisław `f=(3,...)` — algorytm eksploruje więc całą czeską gałąź zanim dotrze do Sędzisławia, gdzie jest właściwa przesiadka na Wrocław.
 
@@ -652,11 +655,11 @@ Dla dłuższej trasy (Wrocław → Karpacz) `aps` odwiedza **16× mniej węzłó
 | Kryterium | Algorytm | Węzły | Redukcja | Przyjazd | Przesiadki |
 |---|---|---|---|---|---|
 | czas | Dijkstra `t` | 239 | — | 13:30 | 5 |
-| czas | A* euklid `at` | 193 | −19% | 13:30 | 5 |
-| czas | A* rev-Dijkstra `ats` | 118 | **−51%** | 13:30 | 5 |
-| przesiadki | Dijkstra `p` | 2174 | — | 14:44 | 2 |
-| przesiadki | A* `ap` | 243 | **−89%** | 14:44 | 2 |
-| przesiadki | A* BFS-kursy `aps` (Lubawka→Rokitki) | 523 | −76% | 14:44 | 2 |
+| czas | A* euklid `at` | 190 | −21% | 13:30 | 5 |
+| czas | A* rev-Dijkstra `ats` | 112 | **−53%** | 13:30 | 5 |
+| przesiadki | Dijkstra `p` | 2170 | — | 14:44 | 2 |
+| przesiadki | A* `ap` | 242 | **−89%** | 14:44 | 2 |
+| przesiadki | A* BFS-kursy `aps` (Lubawka→Rokitki) | 527 | −76% | 14:44 | 2 |
 | przesiadki | A* BFS-kursy `aps` (Wrocław→Karpacz) | 50 | **−94%** vs `ap` | — | 1 |
 
 Skuteczność `aps` zależy od topologii sieci. Dla tras gdzie wiele kursów ma `min_transfers > 1` (sieć rzadka, daleka trasa) — przewaga duża. Dla tras gdzie większość kursów ma `min_transfers = 1` — heurystyki `ap` i `aps` dają podobne wartości i różnica zanika.
@@ -884,7 +887,7 @@ Testy wykonano na danych Kolei Dolnośląskich, piątek, odjazd 08:40.
 ### 8.1 Lubawka → Rokitki; Wałbrzych Główny, kryterium czasu (`t`)
 
 ```
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny" t "8:40" "pt"
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny" t "8:40" "pt"
 
 Trasa: Lubawka → Wałbrzych Główny → Rokitki → Lubawka
 
@@ -920,7 +923,7 @@ Greedy wybrał Wałbrzych jako pierwszy przystanek (bliżej Lubawki), potem Roki
 ### 8.2 Lubawka → Rokitki; Wałbrzych Główny, kryterium przesiadek (`p`)
 
 ```
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny" p "8:40" "pt"
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny" p "8:40" "pt"
 
 Trasa: Lubawka → Wałbrzych Główny → Rokitki → Lubawka
 
@@ -950,7 +953,7 @@ Kryterium przesiadek wybiera inne połączenia na każdym odcinku — przez Wroc
 ### 8.3 Lubawka → Rokitki; Wałbrzych Główny; Legnica, kryterium czasu (`t`)
 
 ```
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt"
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt"
 
 Trasa: Lubawka → Wałbrzych Główny → Legnica → Rokitki → Lubawka
 
@@ -989,18 +992,18 @@ Wejściowa kolejność listy to `Rokitki;Wałbrzych Główny;Legnica`. Greedy za
 ### 8.4 Porównanie wariantów (Lubawka → Rokitki; Wałbrzych Główny; Legnica, kryterium `t`)
 
 ```
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt"              → 17:35, 0.058s
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --tabu-size auto  → 17:35, 0.058s
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --aspiration      → 17:35, 0.061s
-$ python main2.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --sample 3        → 17:35, 0.061s
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt"
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --tabu-size auto
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --aspiration
+$ python main_tsp.py "Lubawka" "Rokitki;Wałbrzych Główny;Legnica" t "8:40" "pt" --sample 3
 ```
 
 | Wariant | Kolejność | Przyjazd | Czas obliczenia |
 |---|---|---|---|
-| (a) bazowy | Wałbrzych → Legnica → Rokitki | 17:35 | 0.058s |
-| (b) `--tabu-size auto` (\|T\|=6) | Wałbrzych → Legnica → Rokitki | 17:35 | 0.058s |
+| (a) bazowy | Wałbrzych → Legnica → Rokitki | 17:35 | 0.065s |
+| (b) `--tabu-size auto` (rozmiar=6) | Wałbrzych → Legnica → Rokitki | 17:35 | 0.061s |
 | (c) `--aspiration` | Wałbrzych → Legnica → Rokitki | 17:35 | 0.061s |
-| (d) `--sample 3` | Wałbrzych → Legnica → Rokitki | 17:35 | 0.061s |
+| (d) `--sample 3` | Wałbrzych → Legnica → Rokitki | 17:35 | 0.060s |
 
 Wszystkie warianty dają identyczny wynik — greedy initial solution trafia w optimum globalne dla tej trasy. Warianty (b), (c), (d) są zaprojektowane z myślą o większych instancjach, gdzie przestrzeń rozwiązań ma więcej lokalnych optimów.
 
