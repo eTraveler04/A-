@@ -11,9 +11,7 @@
 
 Sieć połączeń kolejowych modelowana jest jako **skierowany graf zależny od czasu**. Każdy wierzchołek reprezentuje przystanek (stację), a każda krawędź — jeden odcinek kursu pociągu między dwoma kolejnymi przystankami. Krawędź posiada dwa atrybuty czasowe: czas odjazdu i czas przyjazdu. Pasażer może skorzystać z krawędzi tylko wtedy, gdy przybywa na przystanek **nie później** niż czas odjazdu danego kursu.
 
-Formalnie, dla każdej pary kolejnych przystanków $(i, i+1)$ w kursie tworzona jest krawędź:
-
-$$e = (\mathrm{stop}_i \to \mathrm{stop}_{i+1},\ t^{\mathrm{dep}}_i,\ t^{\mathrm{arr}}_{i+1})$$
+Dla każdej pary kolejnych przystanków w kursie tworzona jest krawędź zawierająca: przystanek źródłowy, przystanek docelowy, czas odjazdu i czas przyjazdu.
 
 Przesiadka modelowana jest implicitnie — pasażer czeka na przystanku do najbliższego dostępnego odjazdu w kierunku celu.
 
@@ -45,44 +43,39 @@ graph = {
 # Algorytm filtruje: conn.departure_time >= current_arrival_time
 ```
 
-Czasy podawane są w sekundach od północy: `09:31:00` = $9 \times 3600 + 31 \times 60 = 34260$ s.
+Czasy podawane są w sekundach od północy: `09:31:00` = 9 * 3600 + 31 * 60 = 34260 s.
 
 ### 1.2 Algorytm Dijkstry
 
-Algorytm Dijkstry znajduje najkrótszą ścieżkę w grafie ważonym z nieujemnymi wagami. Operuje na kolejce priorytetowej, z której zawsze wybierany jest wierzchołek o najniższym dotychczasowym koszcie $g(v)$.
+Algorytm Dijkstry znajduje najkrótszą ścieżkę w grafie ważonym z nieujemnymi wagami. Operuje na kolejce priorytetowej, z której zawsze wybierany jest wierzchołek o najniższym dotychczasowym koszcie `g(v)`.
 
-**Inicjalizacja:**
-$$g(s) = t_{\mathrm{start}}, \quad g(v) = \infty \text{ dla } v \neq s$$
+**Inicjalizacja:** koszt wierzchołka startowego `g(s) = t_start`, pozostałych `g(v) = inf`.
 
-**Relaksacja krawędzi** — dla każdego sąsiada $u$ bieżącego wierzchołka $v$:
-$$\text{jeśli } \text{departure}(v \to u) \geq g(v) \text{ oraz } \text{arrival}(v \to u) < g(u): \quad g(u) \leftarrow \text{arrival}(v \to u)$$
+**Relaksacja krawędzi** — dla każdego sąsiada `u` bieżącego wierzchołka `v`: jeśli `departure(v→u) >= g(v)` oraz `arrival(v→u) < g(u)`, to `g(u) = arrival(v→u)`.
 
-Warunek $\text{departure}(v \to u) \geq g(v)$ zapewnia, że pasażer zdąży na dany kurs. Algorytm kończy się gdy cel zostaje wyciągnięty z kolejki — w tym momencie $g(\text{cel})$ jest minimalnym możliwym czasem przybycia.
+Warunek `departure(v→u) >= g(v)` zapewnia, że pasażer zdąży na dany kurs. Algorytm kończy się gdy cel zostaje wyciągnięty z kolejki — w tym momencie `g(cel)` jest minimalnym możliwym czasem przybycia.
 
 ### 1.3 Algorytm A*
 
-A* jest rozszerzeniem Dijkstry o funkcję heurystyczną $h(v)$, która szacuje minimalny koszt dotarcia z wierzchołka $v$ do celu. Priorytet w kolejce wyznaczany jest przez:
+A* jest rozszerzeniem Dijkstry o funkcję heurystyczną `h(v)`, która szacuje minimalny koszt dotarcia z wierzchołka `v` do celu. Priorytet w kolejce wyznaczany jest przez:
 
-$$f(v) = g(v) + h(v)$$
+`f(v) = g(v) + h(v)`
 
-gdzie $g(v)$ to rzeczywisty koszt dotychczasowej ścieżki, a $h(v)$ to szacunek pozostałego kosztu.
+gdzie `g(v)` to rzeczywisty koszt dotychczasowej ścieżki, a `h(v)` to szacunek pozostałego kosztu.
 
-**Warunek dopuszczalności heurystyki:**
-$$h(v) \leq h^*(v)$$
+**Warunek dopuszczalności heurystyki:** `h(v) <= h*(v)`, gdzie `h*(v)` to rzeczywisty minimalny koszt dotarcia z `v` do celu. Gwarantuje to, że A* znajdzie rozwiązanie optymalne.
 
-gdzie $h^*(v)$ to rzeczywisty minimalny koszt dotarcia z $v$ do celu. Gwarantuje to, że A* znajdzie rozwiązanie optymalne.
-
-Węzły w złym kierunku od celu otrzymują duże $h$, przez co trafiają na koniec kolejki i naturalnie nie są eksplorowane jeśli cel zostanie znaleziony wcześniej — stąd przyspieszenie względem Dijkstry. Gdy $h \equiv 0$, A* degeneruje się do Dijkstry.
+Węzły w złym kierunku od celu otrzymują duże `h`, przez co trafiają na koniec kolejki i naturalnie nie są eksplorowane jeśli cel zostanie znaleziony wcześniej — stąd przyspieszenie względem Dijkstry. Gdy `h = 0`, A* degeneruje się do Dijkstry.
 
 ### 1.4 A* z kryterium czasu — heurystyka euklidesowa (`at`)
 
-Koszt $g(v)$ to czas przybycia w sekundach. Heurystyka szacuje minimalny czas dotarcia z przystanku $v$ do celu jako odległość euklidesową w linii prostej podzieloną przez maksymalną prędkość pociągu:
+Koszt `g(v)` to czas przybycia w sekundach. Heurystyka szacuje minimalny czas dotarcia z przystanku `v` do celu jako odległość euklidesową w linii prostej podzieloną przez maksymalną prędkość pociągu (44.4 m/s ≈ 160 km/h):
 
-$$h(v) = \frac{d_{\mathrm{euklid}}(v,\ \text{cel})}{v_{\mathrm{max}}}, \quad v_{\mathrm{max}} = 44{,}4\ \text{m/s} \approx 160\ \text{km/h}$$
+`h(v) = odleglosc_euklid(v, cel) / 44.4`
 
 Odległość euklidesowa liczona jest ze współrzędnych geograficznych WGS84 z przeliczeniem stopni na metry:
 
-$$d = \sqrt{(\Delta\phi \cdot 111320)^2 + (\Delta\lambda \cdot 111320 \cdot \cos\bar{\phi})^2}$$
+`d = sqrt((delta_lat * 111320)^2 + (delta_lon * 111320 * cos(avg_lat))^2)`
 
 Heurystyka jest dopuszczalna, ponieważ pociąg nigdy nie pokona odległości między dwoma punktami szybciej niż jadąc 160 km/h w linii prostej.
 
@@ -92,30 +85,27 @@ Heurystyka euklidesowa jest dopuszczalna, ale zgrubna — pociąg nigdy nie jedz
 
 **Odwrócona Dijkstra od celu** — przed startem algorytmu uruchamiamy Dijkstrę wstecz od stacji docelowej na uproszczonym grafie, gdzie waga krawędzi to minimalny czas przejazdu między przystankami (ignorujemy rozkład jazdy i czasy oczekiwania):
 
-$$w_{\mathrm{min}}(u \to v) = \min_{\text{kursy}} (t^{\mathrm{arr}}_v - t^{\mathrm{dep}}_u)$$
+Waga krawędzi to minimum czasu przejazdu ze wszystkich kursów obsługujących daną parę przystanków: `w_min(u→v) = min(arrival_v - departure_u)`.
 
-Wynik $\text{dist}[v]$ stanowi dolne ograniczenie rzeczywistego czasu dotarcia z $v$ do celu. Heurystyka jest dopuszczalna, ponieważ:
-- ignoruje czasy oczekiwania na przesiadki (zawsze $\geq 0$)
-- używa minimalnych czasów przejazdu (rzeczywiste czasy są $\geq$ minimum)
+Wynik `dist[v]` stanowi dolne ograniczenie rzeczywistego czasu dotarcia z `v` do celu. Heurystyka jest dopuszczalna, ponieważ:
+- ignoruje czasy oczekiwania na przesiadki (zawsze >= 0)
+- używa minimalnych czasów przejazdu (rzeczywiste czasy są >= minimum)
 
-Prekomputacja wykonywana jest raz w $O(|E| \log |V|)$ przed startem wyszukiwania.
+Prekomputacja wykonywana jest raz przed startem wyszukiwania.
 
 ### 1.6 A* z kryterium przesiadek (`ap`)
 
-Koszt $g(v)$ jest krotką $(p, t)$, gdzie $p$ to liczba przesiadek, $t$ to czas przybycia. Sortowanie leksykograficzne — najpierw minimalizujemy przesiadki, przy remisie minimalizujemy czas.
+Koszt `g(v)` jest krotką `(p, t)`, gdzie `p` to liczba przesiadek, `t` to czas przybycia. Sortowanie leksykograficzne — najpierw minimalizujemy przesiadki, przy remisie minimalizujemy czas.
 
-Stan algorytmu rozszerzony jest o aktualny kurs: $v = (\mathrm{stopId},\ \mathrm{tripId})$. Przesiadka naliczana jest gdy pasażer zmienia `trip_id`.
+Stan algorytmu rozszerzony jest o aktualny kurs: `v = (stop_id, trip_id)`. Przesiadka naliczana jest gdy pasażer zmienia `trip_id`.
 
 Heurystyka opiera się na pytaniu: czy obecny kurs dojedzie do celu bez żadnej przesiadki?
-
-$$h(v) = \begin{cases} 0 & \text{jeśli } \mathrm{tripId}(v) \in \mathrm{tripsToTarget} \\ 1 & \text{w przeciwnym razie} \end{cases}$$
+- `h(v) = 0` jeśli `trip_id` należy do kursów docierających do celu
+- `h(v) = 1` w przeciwnym razie
 
 Jest to heurystyka dopuszczalna — jeśli obecny kurs nie dociera do celu, co najmniej jedna przesiadka jest nieunikniona.
 
-Funkcja priorytetu w kolejce:
-$$f = (g_p + h,\ g_t)$$
-
-Heurystyka dodawana jest wyłącznie do składowej przesiadkowej krotki, nie do czasu.
+Priorytet w kolejce: `f = (g_p + h, g_t)` — heurystyka dodawana jest wyłącznie do składowej przesiadkowej krotki, nie do czasu.
 
 ### 1.7 A* z kryterium przesiadek — heurystyka oparta na BFS po kursach (`aps`)
 
@@ -123,14 +113,16 @@ Heurystyka `ap` zwraca tylko 0 lub 1 — nie rozróżnia sytuacji gdy do celu po
 
 **Graf przesiadek** — dwa kursy są połączone jeśli dzielą wspólny przystanek (można się między nimi przesiąść). BFS od kursów docierających bezpośrednio do celu daje minimalną liczbę przesiadek dla każdego kursu:
 
-$$\mathrm{minTransfers}[\mathrm{trip}] = \min \text{ liczba przesiadek z kursu } \mathrm{trip} \text{ do celu}$$
+`min_transfers[trip]` = minimalna liczba przesiadek z kursu `trip` do celu.
 
 Prekomputacja w dwóch krokach:
 1. Dla każdego przystanku zbieramy wszystkie kursy które się tam zatrzymują (`stop_to_trips`)
-2. BFS od kursów z $\mathrm{minTransfers} = 0$ — dla każdego sąsiedniego kursu (dzielącego przystanek) ustawiamy $\mathrm{minTransfers} = d + 1$
+2. BFS od kursów z `min_transfers = 0` — dla każdego sąsiedniego kursu (dzielącego przystanek) ustawiamy `min_transfers = d + 1`
 
-Heurystyka:
-$$h(v) = \begin{cases} 0 & \text{jeśli } \mathrm{stopId}(v) \in \mathrm{targetIds} \\ \mathrm{minTransfers}[\mathrm{tripId}(v)] & \text{jeśli } \mathrm{tripId}(v) \neq \mathrm{None} \\ \min_{c \in \mathrm{conns}(v)} \mathrm{minTransfers}[c.\mathrm{tripId}] & \text{jeśli } \mathrm{tripId}(v) = \mathrm{None} \text{ (stan startowy)} \end{cases}$$
+Heurystyka dla stanu `v = (stop_id, trip_id)`:
+- `h(v) = 0` jeśli `stop_id` jest celem
+- `h(v) = min_transfers[trip_id]` jeśli `trip_id` jest znane
+- `h(v) = min(min_transfers[c.trip_id] for c in connections(stop_id))` jeśli `trip_id = None` (stan startowy)
 
 Jest dopuszczalna — `minTransfers` to dolne ograniczenie, ponieważ ignoruje czasy rozkładu (zakłada że zawsze można się przesiąść).
 
@@ -245,8 +237,8 @@ class SearchConfig:
 - **(3)** `is_goal` — sprawdza czy osiągnięto cel. Dla czasu: `state in target_ids`. Dla przesiadek: `state[0] in target_ids` (bo stan to krotka).
 - **(4)** `get_stop_id` — wyłuskuje `stop_id` ze stanu (różne dla różnych typów stanu).
 - **(5)** `get_arrival_time` — wyłuskuje czas przybycia z kosztu (różne dla `int` i krotki).
-- **(6)** `heuristic` — funkcja $h(v)$. Gdy `None`, algorytm działa jak Dijkstra.
-- **(7)** `make_f` — definiuje jak łączyć $g$ z $h$ przy obliczaniu priorytetu. Potrzebne gdy koszt jest krotką — nie można po prostu dodać `(p, t) + 1`.
+- **(6)** `heuristic` — funkcja heurystyczna `h(v)`. Gdy `None`, algorytm działa jak Dijkstra.
+- **(7)** `make_f` — definiuje jak łączyć `g` z `h` przy obliczaniu priorytetu. Potrzebne gdy koszt jest krotką — nie można po prostu dodać `(p, t) + 1`.
 - **(8)** `on_visit` — opcjonalny callback diagnostyczny wywoływany przy każdej wizycie węzła.
 
 ---
@@ -383,7 +375,7 @@ def make_astar_time_reverse_dijkstra_config(graph: Graph, target_ids: set[StopId
 - **(1)** Czas przejazdu na odcinku = `arrival - departure`. Bierzemy minimum ze wszystkich kursów obsługujących daną parę przystanków — dolne ograniczenie.
 - **(2)** Odwrócenie krawędzi: zamiast `A → B`, tworzymy `B → A`. Pozwala na Dijkstrę "wstecz" od celu.
 - **(3)** Inicjalizacja kolejki od wszystkich stacji docelowych z kosztem 0 — wieloźródłowa Dijkstra.
-- **(4)** Standardowa relaksacja Dijkstry na odwróconym grafie. Wynik `dist[v]` to minimalna suma czasów przejazdu z $v$ do celu, ignorując oczekiwanie.
+- **(4)** Standardowa relaksacja Dijkstry na odwróconym grafie. Wynik `dist[v]` to minimalna suma czasów przejazdu z `v` do celu, ignorując oczekiwanie.
 - **(5)** Heurystyka to prekomputowana dolna granica. Dla przystanków poza siecią KD zwraca 0 (bezpieczne).
 
 ---
@@ -413,7 +405,7 @@ def make_astar_transfers_direct_trip_config(graph: Graph, target_ids: set[StopId
     return config
 ```
 
-- **(1)** Prekomputacja w $O(|E|)$ — dla każdej krawędzi kończącej się w celu zapisujemy `trip_id`.
+- **(1)** Prekomputacja liniowa — dla każdej krawędzi kończącej się w celu zapisujemy `trip_id`.
 - **(2)** Już na miejscu — 0 przesiadek więcej.
 - **(3)** Obecny kurs ma zatrzymanie w stacji docelowej — dotrzemy bez przesiadki.
 - **(4)** Obecny kurs nie dociera do celu — konieczna co najmniej 1 przesiadka.
@@ -425,14 +417,16 @@ def make_astar_transfers_direct_trip_config(graph: Graph, target_ids: set[StopId
 
 ```python
 def make_astar_transfers_bfs_config(graph: Graph, target_ids: set[StopId]) -> SearchConfig:
-    # Krok 1: dla każdego przystanku — które kursy się tam zatrzymują
-    stop_to_trips: dict[StopId, set[str]] = defaultdict(set)
+    # Krok 1: dwa indeksy — przystanek→kursy i kurs→przystanki
+    stop_to_trips: dict[StopId, set[TripId]] = defaultdict(set)
+    trip_to_stops: dict[TripId, set[StopId]] = defaultdict(set)
     for conns in graph.values():
         for conn in conns:
             stop_to_trips[conn.from_stop_id].add(conn.trip_id)        # (1)
+            trip_to_stops[conn.trip_id].add(conn.from_stop_id)        # (1)
 
     # Krok 2: BFS od kursów docierających bezpośrednio do celu
-    min_transfers: dict[str, int] = {}
+    min_transfers: dict[TripId, int] = {}
     queue: deque = deque()
     for conns in graph.values():
         for conn in conns:
@@ -443,20 +437,17 @@ def make_astar_transfers_bfs_config(graph: Graph, target_ids: set[StopId]) -> Se
     while queue:
         trip = queue.popleft()
         d = min_transfers[trip]
-        for conns in graph.values():
-            for conn in conns:
-                if conn.trip_id != trip:
-                    continue
-                for other_trip in stop_to_trips.get(conn.from_stop_id, set()):
-                    if other_trip not in min_transfers:
-                        min_transfers[other_trip] = d + 1              # (3)
-                        queue.append(other_trip)
+        for stop_id in trip_to_stops[trip]:                            # (3)
+            for other_trip in stop_to_trips[stop_id]:
+                if other_trip not in min_transfers:
+                    min_transfers[other_trip] = d + 1                  # (4)
+                    queue.append(other_trip)
 
     def heuristic(state: tuple) -> int:
         stop_id, trip_id = state
         if stop_id in target_ids:
             return 0
-        if trip_id is None:                                            # (4)
+        if trip_id is None:                                            # (5)
             for conn in graph.get(stop_id, []):
                 if min_transfers.get(conn.trip_id, 1) == 0:
                     return 0
@@ -469,10 +460,11 @@ def make_astar_transfers_bfs_config(graph: Graph, target_ids: set[StopId]) -> Se
     return config
 ```
 
-- **(1)** Budowanie odwróconego indeksu: przystanek → zbiór kursów. Potrzebny do znajdowania kursów z którymi można się przesiąść.
+- **(1)** Dwa indeksy: `stop_to_trips` (przystanek → kursy zatrzymujące się tam) i `trip_to_stops` (kurs → przystanki na których staje). Pozwalają na O(1) lookup zamiast przeszukiwania całego grafu.
 - **(2)** Inicjalizacja BFS — kursy docierające bezpośrednio do celu mają 0 przesiadek.
-- **(3)** Relaksacja BFS — kurs sąsiedni (dzielący przystanek) potrzebuje o 1 przesiadkę więcej.
-- **(4)** Stan startowy ma `trip_id = None` — sprawdzamy czy z przystanku odjeżdża bezpośredni kurs do celu. Bez tej korekty heurystyka zwracałaby 1 nawet gdy istnieje połączenie bezpośrednie, co byłoby przeszacowaniem.
+- **(3)** Dla każdego przystanku kursu szukamy kursów z którymi można się tam przesiąść — dzięki `trip_to_stops` nie trzeba przeszukiwać całego grafu.
+- **(4)** Relaksacja BFS — kurs sąsiedni (dzielący przystanek) potrzebuje o 1 przesiadkę więcej. Warunek `not in min_transfers` gwarantuje że BFS zapisuje zawsze najkrótszą drogę (pierwszy dotarcie = najmniejsza liczba przesiadek).
+- **(5)** Stan startowy ma `trip_id = None` — sprawdzamy czy z przystanku odjeżdża bezpośredni kurs do celu. Bez tej korekty heurystyka zwracałaby 1 nawet gdy istnieje połączenie bezpośrednie, co byłoby przeszacowaniem.
 
 ---
 
@@ -520,7 +512,7 @@ def search(graph, source_ids, target_ids, departure_time, config):
     return None, step
 ```
 
-- **(1)** `itertools.count()` jako tiebreaker — gdy dwa węzły mają równe $f$, heap porównuje kolejny element krotki. Counter gwarantuje unikalność i unika błędu porównywania stanów.
+- **(1)** `itertools.count()` jako tiebreaker — gdy dwa węzły mają równe `f`, heap porównuje kolejny element krotki. Counter gwarantuje unikalność i unika błędu porównywania stanów.
 - **(2)** Gdy brak heurystyki (`None`), priorytet = koszt = klasyczna Dijkstra.
 - **(3)** Lazy deletion — zamiast aktualizować istniejące wpisy w heap (kosztowne), dodajemy nowy wpis i ignorujemy zdezaktualizowane. Wpis jest zdezaktualizowany gdy `current_cost != best_cost[state]`.
 - **(4)** Algorytm kończy się gdy cel **wychodzi z kolejki** — nie gdy jest do niej dodany. Gwarantuje optymalność: gdy cel jest na szczycie kolejki, żadna inna ścieżka nie może być lepsza.
@@ -530,7 +522,7 @@ def search(graph, source_ids, target_ids, departure_time, config):
 
 ## 3. Wyniki
 
-Testy wykonano na danych Kolei Dolnośląskich, piątek, trasa Lubawka → Rokitki (odjazd 08:40). Kryterium: `t` = Dijkstra czas, `p` = Dijkstra przesiadki, `at` = A* czas (euklid), `ats` = A* czas (rev-Dijkstra), `ap` = A* przesiadki.
+Testy wykonano na danych Kolei Dolnośląskich, piątek, trasa Lubawka → Rokitki (odjazd 08:40). Kryterium: `t` = Dijkstra czas, `p` = Dijkstra przesiadki, `at` = A* czas (euklid), `ats` = A* czas (rev-Dijkstra), `ap` = A* przesiadki (direct-trip), `aps` = A* przesiadki (BFS po kursach).
 
 ### 3.1 Lubawka → Rokitki, kryterium czasu (`t`)
 
@@ -551,6 +543,7 @@ Czas:        00:03:59
 Przesiadki:  5
 Linie:       ['D66', 'D60', 'D91', 'D1', 'D14']
 Odwiedzone węzły: 239
+Czas obliczenia: 0.003s
 ```
 
 Trasa prowadzi przez Wałbrzych i Legnicę — brak połączeń bezpośrednich między małymi stacjami. Algorytm znalazł 5 przesiadek jako koszt najszybszego dotarcia.
@@ -678,11 +671,9 @@ Skuteczność `aps` zależy od topologii sieci. Dla tras gdzie wiele kursów ma 
 
 ### 6.1 Problem komiwojażera (TSP) na sieci kolejowej
 
-Problem komiwojażera (TSP) polega na znalezieniu najkrótszej zamkniętej trasy odwiedzającej zbiór miast dokładnie raz i wracającej do punktu startowego. Formalnie, dla zbioru miast $V = \{v_1, \ldots, v_n\}$ szukamy permutacji $\pi$ minimalizującej:
+Problem komiwojażera (TSP) polega na znalezieniu najkrótszej zamkniętej trasy odwiedzającej zbiór miast dokładnie raz i wracającej do punktu startowego. Szukamy permutacji przystanków minimalizującej sumę kosztów kolejnych odcinków trasy.
 
-$$D = \sum_{i=1}^{n} d(\pi_i, \pi_{i+1}) + d(\pi_n, \pi_1)$$
-
-W klasycznym TSP macierz odległości $d(i,j)$ jest stała. W naszym przypadku — sieci kolejowej — koszt przejazdu z przystanku $i$ do $j$ **zależy od czasu przyjazdu do $i$**, ponieważ dostępność pociągów zmienia się w zależności od rozkładu. Jest to **time-dependent TSP**.
+W klasycznym TSP macierz odległości `d(i,j)` jest stała. W naszym przypadku — sieci kolejowej — koszt przejazdu między przystankami **zależy od czasu przyjazdu do przystanku pośredniego**, ponieważ dostępność pociągów zmienia się w zależności od rozkładu. Jest to **time-dependent TSP**.
 
 Macierz kosztów nie jest prekomputowana — zamiast tego, przy każdej ocenie trasy wywołujemy `search()` z Zadania 1 sekwencyjnie dla kolejnych odcinków. Czas odjazdu każdego odcinka wynika z czasu przyjazdu odcinka poprzedniego.
 
@@ -690,32 +681,30 @@ Macierz kosztów nie jest prekomputowana — zamiast tego, przy każdej ocenie t
 
 ### 6.2 Przeszukiwanie lokalne i jego ograniczenia
 
-Przeszukiwanie lokalne iteracyjnie zastępuje bieżące rozwiązanie $s$ lepszym sąsiadem $s' \in N(s)$. Kończy się gdy żaden sąsiad nie jest lepszy — w **optimum lokalnym**, które niekoniecznie jest globalnym.
+Przeszukiwanie lokalne iteracyjnie zastępuje bieżące rozwiązanie `s` lepszym sąsiadem `s'` z sąsiedztwa `N(s)`. Kończy się gdy żaden sąsiad nie jest lepszy — w **optimum lokalnym**, które niekoniecznie jest globalnym.
 
-Dla TSP z $n$ miastami sąsiedztwo **swap** zawiera $\binom{n}{2}$ kandydatów — każdą parę miast, które można ze sobą zamienić:
-
-$$N_{\mathrm{swap}}(s) = \{s \text{ ze zamienionymi pozycjami } i \text{ i } j \mid 1 \leq i < j \leq n\}$$
+Dla TSP z `n` miastami sąsiedztwo **swap** zawiera `n*(n-1)/2` kandydatów — każdą parę miast, które można ze sobą zamienić w kolejności odwiedzania.
 
 ### 6.3 Tabu Search
 
-Tabu Search rozszerza przeszukiwanie lokalne o **listę tabu** $T$ przechowującą ostatnio wykonane ruchy. W każdej iteracji:
+Tabu Search rozszerza przeszukiwanie lokalne o **listę tabu** `T` przechowującą ostatnio wykonane ruchy. W każdej iteracji:
 
-1. Generujemy całe sąsiedztwo $N(s)$ (lub jego próbkę).
-2. Wybieramy **najlepszego** kandydata $s' \in N(s) \setminus T$ — nawet jeśli gorszy od bieżącego.
-3. Dodajemy wykonany ruch do $T$.
-4. Aktualizujemy globalne optimum $s^*$ jeśli $f(s') < f(s^*)$.
+1. Generujemy całe sąsiedztwo `N(s)` (lub jego próbkę).
+2. Wybieramy **najlepszego** kandydata spoza listy tabu — nawet jeśli gorszy od bieżącego.
+3. Dodajemy wykonany ruch do `T`.
+4. Aktualizujemy globalne optimum jeśli nowe rozwiązanie jest lepsze.
 
 Dzięki liście tabu algorytm **nie cofa się** do niedawno odwiedzonych rozwiązań i może wyjść z optimum lokalnego.
 
 ### 6.4 Warianty algorytmu
 
-**Wariant (a) — bazowy:** lista tabu nieograniczona ($|T| = \infty$). Każdy ruch jest pamiętany na zawsze.
+**Wariant (a) — bazowy:** lista tabu nieograniczona (brak limitu). Każdy ruch jest pamiętany na zawsze.
 
-**Wariant (b) — zmienny rozmiar T:** $|T| = 2 \cdot |L|$. Lista traktowana jako kolejka FIFO — przy przepełnieniu usuwany jest najstarszy ruch. Dla małych list L tabu jest krótkie (nie blokuje zbyt wiele), dla dużych — dłuższe.
+**Wariant (b) — zmienny rozmiar T:** rozmiar listy `= 2 * |L|`. Lista traktowana jako kolejka FIFO — przy przepełnieniu usuwany jest najstarszy ruch. Dla małych list L tabu jest krótkie (nie blokuje zbyt wiele), dla dużych — dłuższe.
 
-**Wariant (c) — kryterium aspiracji:** ruch z listy tabu jest dopuszczony wyjątkowo, jeśli prowadzi do nowego globalnego optimum ($f(s') < f(s^*)$). Zapobiega odrzucaniu potencjalnie świetnych ruchów tylko dlatego, że są na liście tabu.
+**Wariant (c) — kryterium aspiracji:** ruch z listy tabu jest dopuszczony wyjątkowo, jeśli prowadzi do nowego globalnego optimum (koszt kandydata < dotychczasowe najlepsze). Zapobiega odrzucaniu potencjalnie świetnych ruchów tylko dlatego, że są na liście tabu.
 
-**Wariant (d) — próbkowanie sąsiedztwa:** zamiast sprawdzać wszystkich $\binom{n}{2}$ sąsiadów, losujemy $k$ z nich. Redukuje czas obliczenia jednej iteracji z $O(n^2)$ do $O(k)$.
+**Wariant (d) — próbkowanie sąsiedztwa:** zamiast sprawdzać wszystkich `n*(n-1)/2` sąsiadów, losujemy `k` z nich. Redukuje czas obliczenia jednej iteracji z kwadratowego do liniowego względem `k`.
 
 ---
 
@@ -879,7 +868,7 @@ def tabu_search(start_name, start_ids, candidates, start_time, graph, criterion,
     return best_names, best_cost, best_results
 ```
 
-- **(1)** Wariant (b): automatyczny rozmiar tablicy tabu — $2 \cdot |L|$. Dla 3 przystanków: $|T|=6$.
+- **(1)** Wariant (b): automatyczny rozmiar tablicy tabu — `2 * n`. Dla 3 przystanków: rozmiar = 6.
 - **(2)** Dwie struktury dla listy tabu: `deque` (FIFO do usuwania) i `set` (O(1) lookup).
 - **(3)** Sąsiedztwo swap: wszystkie pary pozycji pośrednich [1..n] — pozycja 0 i n+1 to zawsze start/koniec.
 - **(4)** Wariant (d): losujemy `sample_size` kandydatów zamiast sprawdzać wszystkich.
@@ -1051,6 +1040,33 @@ Wszystkie warianty znalazły identyczną trasę:
 `Wrocław Główny → Wałbrzych Szczawienko → Kamienna Góra → Szklarska Poręba Górna → Strzegom → Żary → Żagań → Bolesławiec → Zgorzelec → Węgliniec → Legnica → Wrocław Główny`
 
 Jest to przypadek gdzie greedy initial solution trafia od razu w optimum globalne — żaden swap w sąsiedztwie nie daje lepszego wyniku. Tabu Search potwierdza optymalność rozwiązania greedy. Układ przystanków geograficznie wzdłuż zachodniej części sieci KD sprawia że naturalna kolejność "po drodze" jest trudna do pobicia.
+
+---
+
+### 8.7 Wariant z losowym układem przystanków — `--aspiration` jako wygrywający (kryterium `t`)
+
+Trasa: Wrocław Główny → Karpacz, Żagań, Oleśnica, Lubawka, Głogów, Oława, Jelenia Góra, odjazd 08:00, poniedziałek.
+
+| Wariant | Przyjazd | Czas całkowity | Przesiadki | Czas obliczenia |
+|---|---|---|---|---|
+| (a) bazowy | 08:43 (+1d) | 24h 22min | 19 | 4.2s |
+| (b) `--tabu-size auto` | 08:43 (+1d) | 24h 22min | 19 | 4.8s |
+| (c) `--aspiration` | **06:36 (+1d)** | **22h 26min** | **12** | 4.5s |
+| (d) `--sample 5` | 08:43 (+1d) | 24h 22min | 19 | 3.9s |
+
+Warianty (a), (b), (d) utknęły w tym samym lokalnym optimum. Tylko `--aspiration` odblokował kluczowy ruch tabu prowadzący do znacznie lepszego rozwiązania — o 2h krótszego i z 7 mniejszą liczbą przesiadek. Jest to przykład gdzie kryterium aspiracji ma realny wpływ na wynik.
+
+---
+
+### 8.8 Deterministyczność algorytmu
+
+Wszystkie warianty (a), (b), (c) są w pełni deterministyczne:
+
+- **`greedy_initial`** — zawsze wybiera przystanek z najwcześniejszym czasem przybycia. Dijkstra jest deterministyczna — te same dane = ten sam wynik.
+- **`evaluate_tour`** — sekwencyjne wywołania `search()` z propagacją czasów. Brak losowości.
+- **Pętla Tabu Search** — `all_swaps` generowane w stałej kolejności, iteracja deterministyczna, wybór najlepszego kandydata przez `<` na kosztach, lista tabu to `deque` + `set`.
+
+Jedyne źródło losowości to wariant **(d) `--sample`** — `random.sample(all_swaps, sample_size)`. W praktyce jednak również daje stałe wyniki, ponieważ ziarno losowości nie jest resetowane między uruchomieniami i przy małej przestrzeni próbkowania Python trafia konsekwentnie w te same kombinacje. Potwierdzono to empirycznie uruchamiając każdy wariant 4-krotnie z identycznymi parametrami — wyniki były identyczne we wszystkich przypadkach.
 
 ---
 

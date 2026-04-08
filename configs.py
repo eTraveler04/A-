@@ -169,11 +169,14 @@ def make_astar_transfers_bfs_config(
     """
     from collections import deque
 
-    # Krok 1: graf przesiadek — dla każdego przystanku jakie kursy się tam zatrzymują
-    stop_to_trips: dict[StopId, set[str]] = defaultdict(set)
+    # Krok 1: indeksy — dla każdego przystanku jakie kursy się tam zatrzymują,
+    # i dla każdego kursu na jakich przystankach się zatrzymuje
+    stop_to_trips: dict[StopId, set[TripId]] = defaultdict(set)
+    trip_to_stops: dict[TripId, set[StopId]] = defaultdict(set)
     for conns in graph.values():
         for conn in conns:
             stop_to_trips[conn.from_stop_id].add(conn.trip_id)
+            trip_to_stops[conn.trip_id].add(conn.from_stop_id)
 
     # Krok 2: BFS od kursów docierających do celu
     min_transfers: dict[TripId, int] = {}
@@ -188,16 +191,12 @@ def make_astar_transfers_bfs_config(
     while queue:
         trip = queue.popleft()
         d = min_transfers[trip]
-        # znajdź wszystkie przystanki na których zatrzymuje się ten kurs
-        for conns in graph.values():
-            for conn in conns:
-                if conn.trip_id != trip:
-                    continue
-                # na tym przystanku można przesiąść się z innych kursów
-                for other_trip in stop_to_trips.get(conn.from_stop_id, set()):
-                    if other_trip not in min_transfers:
-                        min_transfers[other_trip] = d + 1
-                        queue.append(other_trip)
+        # dla każdego przystanku kursu sprawdź kursy z którymi można się przesiąść
+        for stop_id in trip_to_stops[trip]:
+            for other_trip in stop_to_trips[stop_id]:
+                if other_trip not in min_transfers:
+                    min_transfers[other_trip] = d + 1
+                    queue.append(other_trip)
 
     def heuristic(state: tuple) -> int:
         stop_id, trip_id = state
