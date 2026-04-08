@@ -56,7 +56,7 @@ def search(
 
     while queue:
         # wyciągnij stan z najniższym priorytetem f
-        _, _, current_cost, current_state = heapq.heappop(queue)
+        current_f, _, current_cost, current_state = heapq.heappop(queue)
 
         # lazy deletion: w heapie mogą być starsze wpisy dla tego samego stanu z wyższym kosztem
         # (wrzucone zanim znaleźliśmy lepszą ścieżkę) — jeśli koszt się nie zgadza, pomijamy
@@ -65,8 +65,9 @@ def search(
 
         step += 1
         if config.on_visit:
+            current_h = h(current_state) if h else 0
             # opcjonalny callback np. do trybu --verbose
-            config.on_visit(step, current_state, current_cost)
+            config.on_visit(step, current_state, current_cost, current_h, current_f)
 
         if config.is_goal(current_state, target_ids):
             return _build_result(current_state, prev, best_cost, departure_time, config), step

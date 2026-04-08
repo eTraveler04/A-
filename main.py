@@ -155,11 +155,14 @@ def main() -> None:
         config = make_time_config()
 
     if verbose:
-        def on_visit(step: int, state, cost) -> None:
+        def on_visit(step: int, state, cost, h_val, f) -> None:
             stop_id = state if isinstance(state, str) else state[0]
+            trip_id = None if isinstance(state, str) else state[1]
             name = stops.get(stop_id, stop_id)
             arrival = seconds_to_time(cost if isinstance(cost, int) else cost[1])
-            print(f"  [{step:>4}] {name:<35} przybycie: {arrival}", file=sys.stderr)
+            transfers = "" if isinstance(cost, int) else f"  przesiadki_g={cost[0]}"
+            trip_str = f"  kurs={trip_id}" if trip_id else ""
+            print(f"  [{step:>4}] {name:<35} przybycie: {arrival}  h={h_val}  f={f}{transfers}{trip_str}", file=sys.stderr)
         config.on_visit = on_visit
 
     t0: float = time.perf_counter()

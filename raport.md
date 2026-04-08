@@ -630,7 +630,11 @@ $ python main.py "Lubawka" "Rokitki" aps "8:40" "pt"
 Odwiedzone węzły: 523
 ```
 
-A* `ap` redukuje węzły o **89%** względem Dijkstry przesiadkowego. `aps` daje wynik identyczny, ale odwiedza więcej węzłów (523 vs 243) — dla trasy wymagającej 2 przesiadek dokładniejsza heurystyka nie pomaga, bo większość kursów ma `min_transfers = 1`, co daje te same wartości co binarna heurystyka `ap`.
+A* `ap` redukuje węzły o **89%** względem Dijkstry przesiadkowego. `aps` daje wynik identyczny, ale odwiedza więcej węzłów (523 vs 243).
+
+Analiza logów (`--verbose`) ujawnia przyczynę: BFS w `aps` przypisał kursom jadącym w stronę Czech (Kralovec, Trutnov) `min_transfers=2`, a kluczowemu przystankowi Sędzisław `min_transfers=3`. Ponieważ `f = (przesiadki_g + h, czas)`, kierunek czeski dostaje `f=(2,...)` a Sędzisław `f=(3,...)` — algorytm eksploruje więc całą czeską gałąź zanim dotrze do Sędzisławia, gdzie jest właściwa przesiadka na Wrocław.
+
+BFS oblicza `min_transfers` na uproszczonym grafie bez rozkładu jazdy — zakłada że zawsze można się przesiąść. W rzeczywistości kursy czeskie nie mają żadnego połączenia z Rokitkami, ale heurystyka tego nie wie i błędnie faworyzuje ten kierunek. Heurystyka pozostaje dopuszczalna (nie przeszacowuje), ale jest niedokładna topologicznie dla kursów wychodzących poza sieć KD.
 
 ---
 

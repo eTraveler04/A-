@@ -66,4 +66,4 @@ class SearchConfig:
     get_arrival_time: Callable[[Cost], Seconds]
     heuristic: Callable[[State], Any] | None = None
     make_f: Callable[[Cost, Any], Any] | None = None
-    on_visit: Callable[[int, State, Cost], None] | None = None
+    on_visit: Callable[[int, State, Cost, Any, Any], None] | None = None  # step, state, cost, h_val, f
